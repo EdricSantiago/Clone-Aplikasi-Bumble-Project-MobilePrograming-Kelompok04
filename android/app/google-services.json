@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "476007364424",
+    "project_id": "bumble-clone-project",
+    "storage_bucket": "bumble-clone-project.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:476007364424:android:d2ba5299dc8caf9492657d",
+        "android_client_info": {
+          "package_name": "com.example.bumble"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCCi1o--gMVBgS81Di1WHxbbV1-kWRh8Jw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
