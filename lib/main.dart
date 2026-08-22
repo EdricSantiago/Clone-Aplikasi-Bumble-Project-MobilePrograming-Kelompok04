@@ -19,7 +19,7 @@ class MyApp extends StatelessWidget {
       title: 'Bumble Clone',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.orange, useMaterial3: true),
-      home: const AuthGate(),
+      home: AuthGate(),
     );
   }
 }
