@@ -65,7 +65,6 @@ class DefaultFirebaseOptions {
     storageBucket: 'bumble-clone-project.firebasestorage.app',
     iosBundleId: 'com.example.bumble',
   );
-
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyCvzT5mSJ4ys49SVVQFyJYXPGZtzVjZPP4',
     appId: '1:476007364424:ios:c653843037ac1d2192657d',
