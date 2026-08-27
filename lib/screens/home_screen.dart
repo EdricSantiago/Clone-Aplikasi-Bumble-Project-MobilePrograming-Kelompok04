@@ -4,21 +4,41 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'settings_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+const Color kBumbleYellow = Color(0xFFFFD84D);
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _selectedIndex = 1;
 
   Future<void> _handleLogout(BuildContext context) async {
     final authService = AuthService();
     await authService.logout();
   }
 
+  void _onNavTap(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final User? currentUser = FirebaseAuth.instance.currentUser;
-
     return Scaffold(
+      backgroundColor: kBumbleYellow,
       appBar: AppBar(
-        title: const Text('Home'),
+        backgroundColor: kBumbleYellow,
+        elevation: 0,
+        foregroundColor: Colors.black,
+        title: const Text(
+          'Home',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_outlined),
@@ -37,34 +57,44 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.favorite, size: 64, color: Colors.pinkAccent),
-              const SizedBox(height: 16),
-              const Text(
-                'Login berhasil!',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Container(
+              margin: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
               ),
-              const SizedBox(height: 8),
-              Text(
-                currentUser?.email ?? 'Email tidak diketahui',
-                style: const TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Halaman ini sementara.\n'
-                'Nanti akan diganti dengan Swipe, Chat, dan Profil '
-                'yang terhubung lewat BottomNavigationBar.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.black54),
-              ),
-            ],
+            ),
           ),
         ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        selectedItemColor: Colors.black,
+        unselectedItemColor: Colors.black54,
+        backgroundColor: Colors.white,
+        currentIndex: _selectedIndex,
+        onTap: _onNavTap,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: 'Profile',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people_alt),
+            label: 'People',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.favorite_border),
+            label: 'Liked You',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat_bubble_outline),
+            label: 'Chats',
+          ),
+        ],
       ),
     );
   }
