@@ -1,7 +1,7 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import 'profile_screen.dart';
 import 'settings_screen.dart';
 
 const Color kBumbleYellow = Color(0xFFFFD84D);
@@ -22,6 +22,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onNavTap(int index) {
+    if (index == 0) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ProfileScreen()),
+      );
+      return;
+    }
+
     setState(() {
       _selectedIndex = index;
     });
