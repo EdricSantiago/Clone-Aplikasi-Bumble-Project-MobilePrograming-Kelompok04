@@ -11,25 +11,25 @@ class MatchModel {
     required this.id,
     required this.userIds,
     this.createdAt,
-    this.lastMassage='',
+    this.lastMassage = '',
     this.lastMassageAt,
   });
 
-  String getOtherUserId(String currentUserId){
+  String getOtherUserId(String currentUserId) {
     return userIds.firstWhere((id) => id != currentUserId, orElse: () => '');
   }
 
   factory MatchModel.fromMap(String id, Map<String, dynamic> map) {
     return MatchModel(
-      id: id, 
+      id: id,
       userIds: List<String>.from(map['userIds'] ?? []),
       createdAt: map['createdAt'] != null
-        ? (map['createdAt'] as Timestamp).toDate()
-        : null,
+          ? (map['createdAt'] as Timestamp).toDate()
+          : null,
       lastMassage: map['lastMassage'] ?? '',
       lastMassageAt: map['lastMassageAt'] != null
-        ? (map['lastMassageAt'] as Timestamp). toDate()
-        : null,
-      );
+          ? (map['lastMassageAt'] as Timestamp).toDate()
+          : null,
+    );
   }
 }
