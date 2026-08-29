@@ -1,12 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class MassageModel {
+class MessageModel {
   final String id;
   final String senderId;
   final String text;
   final DateTime? timestamp;
 
-  MassageModel({
+  MessageModel({
     required this.id,
     required this.senderId,
     required this.text,
@@ -15,16 +15,16 @@ class MassageModel {
 
   Map<String, dynamic> toMap() {
     return {
-      'seenderId': senderId,
+      'senderId': senderId,
       'text': text,
       'timestamp': FieldValue.serverTimestamp(),
     };
   }
 
-  factory MassageModel.fromMap(String id, Map<String, dynamic> map) {
-    return MassageModel(
+  factory MessageModel.fromMap(String id, Map<String, dynamic> map) {
+    return MessageModel(
       id: id,
-      senderId: map['seenderId'] ?? '',
+      senderId: map['senderId'] ?? '',
       text: map['text'] ?? '',
       timestamp: map['timestamp'] != null
           ? (map['timestamp'] as Timestamp).toDate()
