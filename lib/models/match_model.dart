@@ -4,15 +4,15 @@ class MatchModel {
   final String id;
   final List<String> userIds;
   final DateTime? createdAt;
-  final String lastMassage;
-  final DateTime? lastMassageAt;
+  final String lastMessage;
+  final DateTime? lastMessageAt;
 
   MatchModel({
     required this.id,
     required this.userIds,
     this.createdAt,
-    this.lastMassage = '',
-    this.lastMassageAt,
+    this.lastMessage = '',
+    this.lastMessageAt,
   });
 
   String getOtherUserId(String currentUserId) {
@@ -26,9 +26,9 @@ class MatchModel {
       createdAt: map['createdAt'] != null
           ? (map['createdAt'] as Timestamp).toDate()
           : null,
-      lastMassage: map['lastMassage'] ?? '',
-      lastMassageAt: map['lastMassageAt'] != null
-          ? (map['lastMassageAt'] as Timestamp).toDate()
+      lastMessage: map['lastMessage'] ?? '',
+      lastMessageAt: map['lastMessageAt'] != null
+          ? (map['lastMessageAt'] as Timestamp).toDate()
           : null,
     );
   }

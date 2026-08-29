@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import '../models/massage_model.dart';
 import '../models/match_model.dart';
+import '../models/message_model.dart';
 
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -17,7 +17,7 @@ class ChatService {
     return _firestore
         .collection('matches')
         .where('userIds', arrayContains: uid)
-        .orderBy('lastMassageAt', descending: true)
+        .orderBy('lastMessageAt', descending: true)
         .snapshots()
         .map(
           (snapshot) => snapshot.docs
@@ -26,21 +26,35 @@ class ChatService {
         );
   }
 
-  Future<void> sendMassage(String matchId, String text) async {
+  Stream<List<MessageModel>> getMessages(String matchId) {
+    return _firestore
+        .collection('matches')
+        .doc(matchId)
+        .collection('messages')
+        .orderBy('timestamp', descending: false)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
+              .toList(),
+        );
+  }
+
+  Future<void> sendMessage(String matchId, String text) async {
     final uid = currentUserId;
     if (uid == null || text.trim().isEmpty) return;
 
-    final massage = MassageModel(id: '', senderId: uid, text: text.trim());
+    final message = MessageModel(id: '', senderId: uid, text: text.trim());
 
     await _firestore
         .collection('matches')
         .doc(matchId)
-        .collection('massages')
-        .add(massage.toMap());
+        .collection('messages')
+        .add(message.toMap());
 
     await _firestore.collection('matches').doc(matchId).update({
-      'lastMassage': text.trim(),
-      'lastMassageAt': FieldValue.serverTimestamp(),
+      'lastMessage': text.trim(),
+      'lastMessageAt': FieldValue.serverTimestamp(),
     });
   }
 
