@@ -61,7 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (existingMatch.exists) return;
 
     await matchRef.set({
-      'participants': [currentUser.uid, target.uid],
+      'userIds': [currentUser.uid, target.uid],
       'lastMessage': '',
       'createdAt': FieldValue.serverTimestamp(),
       'lastMessageAt': FieldValue.serverTimestamp(),
