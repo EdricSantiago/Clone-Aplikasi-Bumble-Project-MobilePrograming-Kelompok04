@@ -31,13 +31,49 @@ class _HomeScreenState extends State<HomeScreen> {
     if (currentUser == null) return;
 
     final action = direction == SwipeDirection.right ? 'like' : 'pass';
+    final firestore = FirebaseFirestore.instance;
 
-    await FirebaseFirestore.instance
+    await firestore
         .collection('users')
         .doc(currentUser.uid)
         .collection('swipes')
         .doc(target.uid)
         .set({'action': action, 'timestamp': FieldValue.serverTimestamp()});
+
+    if (action != 'like') return;
+
+    final theirSwipeOnMe = await firestore
+        .collection('users')
+        .doc(target.uid)
+        .collection('swipes')
+        .doc(currentUser.uid)
+        .get();
+
+    final isMutualLike =
+        theirSwipeOnMe.exists && theirSwipeOnMe.data()?['action'] == 'like';
+
+    if (!isMutualLike) return;
+
+    final matchId = _buildMatchId(currentUser.uid, target.uid);
+    final matchRef = firestore.collection('matches').doc(matchId);
+
+    final existingMatch = await matchRef.get();
+    if (existingMatch.exists) return;
+
+    await matchRef.set({
+      'participants': [currentUser.uid, target.uid],
+      'lastMessage': '',
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    if (mounted) {
+      _showMessage(context, 'Kamu match dengan ${target.name}!');
+    }
+  }
+
+  static String _buildMatchId(String uidA, String uidB) {
+    final sorted = [uidA, uidB]..sort();
+    return sorted.join('_');
   }
 
   void _onNavTap(int index) {
@@ -133,10 +169,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 'Profile',
                 style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
               )
-            : const Text(
-                'Home',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
+            : const Text('Home', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           if (_selectedIndex == 0)
             IconButton(
