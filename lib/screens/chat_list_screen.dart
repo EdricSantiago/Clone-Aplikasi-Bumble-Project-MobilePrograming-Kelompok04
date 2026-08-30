@@ -38,7 +38,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
             itemBuilder: (context, index) {
               final match = matches[index];
               final otherUserId = match.getOtherUserId(currentUserId ?? '');
-              
+
+              // Ambil data user lawan chat (nama) secara async
               return FutureBuilder<Map<String, dynamic>?>(
                 future: _chatService.getUserData(otherUserId),
                 builder: (context, userSnapshot) {
