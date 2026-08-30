@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
+import 'chat_list_screen.dart';
 
 const Color kBumbleYellow = Color(0xFFFFD84D);
 
@@ -15,6 +16,13 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 1;
+
+  final List<Widget> _pages = [
+    const SizedBox(),
+    const Center(child: Text('Halaman ini masih dalam pengerjaan!.')),
+    const Center(child: Text('Halaman ini masih dalam pengerjaan!.')),
+    const ChatListScreen(),
+  ];
 
   Future<void> _handleLogout(BuildContext context) async {
     final authService = AuthService();
@@ -66,18 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
-            child: Container(
-              margin: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-              ),
-            ),
-          ),
-        ),
+        child: _pages[_selectedIndex],
       ),
       bottomNavigationBar: BottomNavigationBar(
         selectedItemColor: Colors.black,
