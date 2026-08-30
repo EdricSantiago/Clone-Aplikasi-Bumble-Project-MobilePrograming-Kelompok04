@@ -1,6 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../models/user_model.dart';
 import '../services/auth_service.dart';
+import '../widgets/swipe_card_stack.dart';
+import '../widgets/swipeable_card.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
 import 'chat_list_screen.dart';
@@ -17,16 +22,23 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 1;
 
-  final List<Widget> _pages = [
-    const SizedBox(),
-    const Center(child: Text('Halaman ini masih dalam pengerjaan!.')),
-    const Center(child: Text('Halaman ini masih dalam pengerjaan!.')),
-    const ChatListScreen(),
-  ];
-
   Future<void> _handleLogout(BuildContext context) async {
     final authService = AuthService();
     await authService.logout();
+  }
+
+  Future<void> _recordSwipe(UserModel target, SwipeDirection direction) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    final action = direction == SwipeDirection.right ? 'like' : 'pass';
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser.uid)
+        .collection('swipes')
+        .doc(target.uid)
+        .set({'action': action, 'timestamp': FieldValue.serverTimestamp()});
   }
 
   void _onNavTap(int index) {
@@ -43,8 +55,40 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  Widget _buildPeoplePage() {
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance.collection('users').snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(child: Text('Gagal memuat data: ${snapshot.error}'));
+        }
+
+        final docs = snapshot.data?.docs ?? [];
+        final profiles = docs
+            .where((doc) => doc.id != currentUid)
+            .map((doc) => UserModel.fromMap(doc.id, doc.data()))
+            .toList();
+
+        return SwipeCardStack(profiles: profiles, onSwiped: _recordSwipe);
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final pages = [
+      const SizedBox(),
+      _buildPeoplePage(),
+      const Center(child: Text('Halaman ini masih dalam pengerjaan!.')),
+      const ChatListScreen(),
+    ];
+
     return Scaffold(
       backgroundColor: kBumbleYellow,
       appBar: AppBar(
@@ -73,9 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: SafeArea(
-        child: _pages[_selectedIndex],
-      ),
+      body: SafeArea(child: pages[_selectedIndex]),
       bottomNavigationBar: BottomNavigationBar(
         selectedItemColor: Colors.black,
         unselectedItemColor: Colors.black54,
