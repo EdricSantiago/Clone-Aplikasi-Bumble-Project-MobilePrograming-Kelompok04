@@ -77,10 +77,9 @@ class ProfileScreen extends StatelessWidget {
         currentIndex: 0,
         selectedItemColor: Colors.black,
         unselectedItemColor: Colors.black54,
-        type: BottomNavigationBarType.fixed,
         onTap: (index) {
           if (index != 0) {
-            _showMessage(context, 'Halaman ini belum tersedia.');
+            Navigator.pop(context);
           }
         },
         items: const [
@@ -128,7 +127,20 @@ class _ProfileContent extends StatelessWidget {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                _ProfilePhoto(photoUrl: profile?.photoUrl ?? ''),
+                CircleAvatar(
+                  radius: 58,
+                  backgroundColor: const Color(0xfff3f3f3),
+                  backgroundImage: profile?.photoUrl.isNotEmpty == true
+                      ? NetworkImage(profile!.photoUrl)
+                      : null,
+                  child: profile?.photoUrl.isEmpty != false
+                      ? const Icon(
+                          Icons.person,
+                          size: 67,
+                          color: Colors.black45,
+                        )
+                      : null,
+                ),
                 Positioned(
                   bottom: -8,
                   right: 10,
@@ -327,24 +339,6 @@ class _ProfileContent extends StatelessWidget {
   static void _showPlaceholder(BuildContext context, String title) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text('$title belum tersedia.')));
-  }
-}
-
-class _ProfilePhoto extends StatelessWidget {
-  const _ProfilePhoto({required this.photoUrl});
-
-  final String photoUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    return CircleAvatar(
-      radius: 58,
-      backgroundColor: const Color(0xfff3f3f3),
-      backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
-      child: photoUrl.isEmpty
-          ? const Icon(Icons.person, size: 67, color: Colors.black45)
-          : null,
-    );
   }
 }
 
