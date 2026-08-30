@@ -62,8 +62,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     await matchRef.set({
       'participants': [currentUser.uid, target.uid],
-      'lastMessage': 'FieldValue.serverTimestamp()',
+      'lastMessage': '',
       'createdAt': FieldValue.serverTimestamp(),
+      'lastMessageAt': FieldValue.serverTimestamp(),
     });
 
     if (mounted) {
