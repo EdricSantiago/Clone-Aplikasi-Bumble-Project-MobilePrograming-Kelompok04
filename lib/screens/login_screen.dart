@@ -32,11 +32,14 @@ class _LoginScreenState extends State<LoginScreen> {
       password: _passwordController.text.trim(),
     );
 
-    setState(() => _isLoading = false);
+    if (!mounted) return;
 
-    if (error != null) {
-      setState(() => _errorMessage = error);
-    }
+    setState(() {
+      _isLoading = false;
+      if (error != null) {
+        _errorMessage = error;
+      }
+    });
   }
 
   @override
