@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/match_model.dart';
 import '../services/chat_service.dart';
+import '../services/presence_service.dart';
 import 'chat_detail_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
@@ -13,6 +14,9 @@ class ChatListScreen extends StatefulWidget {
 
 class _ChatListScreenState extends State<ChatListScreen> {
   final ChatService _chatService = ChatService();
+  Stream<Map<String, dynamic>> _presenceStream(String uid) {
+    return PresenceService().watchUserStatus(uid);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,14 +50,42 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       userSnapshot.data?['name'] ?? 'Memuat...';
 
                   return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.orange,
-                      child: Text(
-                        otherUserName.isNotEmpty
-                            ? otherUserName[0].toUpperCase()
-                            : '?',
-                        style: const TextStyle(color: Colors.white),
-                      ),
+                    leading: Stack(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: Colors.orange,
+                          child: Text(
+                            otherUserName.isNotEmpty
+                                ? otherUserName[0].toUpperCase()
+                                : '?',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        Positioned(
+                          right: 0,
+                          bottom: 0,
+                          child: StreamBuilder<Map<String, dynamic>>(
+                            stream: otherUserId.isEmpty
+                                ? const Stream.empty()
+                                : _presenceStream(otherUserId),
+                            builder: (context, snapshot) {
+                              final isOnline = snapshot.data?['online'] == true;
+                              return Container(
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  color: isOnline ? Colors.green : Colors.grey,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 2,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                     title: Text(otherUserName),
                     subtitle: Text(
@@ -70,6 +102,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           builder: (context) => ChatDetailScreen(
                             matchId: match.id,
                             otherUserName: otherUserName,
+                            otherUserId: otherUserId,
                           ),
                         ),
                       );

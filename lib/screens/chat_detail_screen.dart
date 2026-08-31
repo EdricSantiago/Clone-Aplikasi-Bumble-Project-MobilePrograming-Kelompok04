@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 
 import '../models/message_model.dart';
 import '../services/chat_service.dart';
+import '../services/presence_service.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String matchId;
   final String otherUserName;
+  final String otherUserId;
 
   const ChatDetailScreen({
     super.key,
     required this.matchId,
     required this.otherUserName,
+    required this.otherUserId,
   });
 
   @override
@@ -52,7 +55,43 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final currentUserId = _chatService.currentUserId;
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.otherUserName)),
+      appBar: AppBar(
+        title: StreamBuilder<Map<String, dynamic>>(
+          stream: PresenceService().watchUserStatus(widget.otherUserId),
+          builder: (context, snapshot) {
+            final isOnline = snapshot.data?['online'] == true;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(widget.otherUserName),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: isOnline ? Colors.green : Colors.grey,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      isOnline ? 'Online' : 'Offline',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+
       body: Column(
         children: [
           Expanded(
@@ -64,9 +103,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 }
 
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(
-                    child: Text('Belum ada pesan.'),
-                  );
+                  return const Center(child: Text('Belum ada pesan.'));
                 }
 
                 final messages = snapshot.data!;
