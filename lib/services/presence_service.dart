@@ -1,8 +1,12 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 
 class PresenceService {
-  final _rtdb = FirebaseDatabase.instance;
+  final _rtdb = FirebaseDatabase.instanceFor(
+    app: Firebase.app(),
+    databaseURL: 'https://bumble-clone-project-default-rtdb.asia-southeast1.firebasedatabase.app',
+  );
 
   void initPresence() {
     final user = FirebaseAuth.instance.currentUser;
