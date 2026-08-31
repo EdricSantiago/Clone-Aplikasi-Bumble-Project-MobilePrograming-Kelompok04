@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'home_screen.dart';
 import 'login_screen.dart';
+import '../services/presence_service.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
@@ -27,6 +28,7 @@ class AuthGate extends StatelessWidget {
         final User? user = snapshot.data;
 
         if (user != null) {
+          PresenceService().initPresence();
           return const HomeScreen();
         }
 
