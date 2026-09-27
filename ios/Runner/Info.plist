@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Aplikasi ini butuh akses kamera untuk mengambil foto yang akan dikirim di chat.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Aplikasi ini butuh akses galeri untuk memilih foto yang akan dikirim di chat.</string>
 </dict>
 </plist>
