@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -70,8 +68,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
     try {
       final currentUserId = _chatService.currentUserId ?? '';
+      final imageBytes = await picked
+          .readAsBytes(); // ganti dari File(picked.path)
       final imageUrl = await _imageService.uploadChatImage(
-        imageFile: File(picked.path),
+        imageBytes: imageBytes,
         matchId: widget.matchId,
         senderId: currentUserId,
         quality: quality,
@@ -298,12 +298,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                     errorBuilder:
                                         (context, error, stackTrace) =>
                                             const SizedBox(
-                                      height: 150,
-                                      width: 150,
-                                      child: Center(
-                                        child: Icon(Icons.broken_image),
-                                      ),
-                                    ),
+                                              height: 150,
+                                              width: 150,
+                                              child: Center(
+                                                child: Icon(Icons.broken_image),
+                                              ),
+                                            ),
                                   ),
                                 )
                               : Text(
