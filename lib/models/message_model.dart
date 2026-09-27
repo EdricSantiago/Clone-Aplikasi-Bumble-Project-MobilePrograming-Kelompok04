@@ -4,12 +4,14 @@ class MessageModel {
   final String id;
   final String senderId;
   final String text;
+  final String? imageUrl;
   final DateTime? timestamp;
 
   MessageModel({
     required this.id,
     required this.senderId,
     required this.text,
+    this.imageUrl,
     this.timestamp,
   });
 
@@ -17,6 +19,7 @@ class MessageModel {
     return {
       'senderId': senderId,
       'text': text,
+      if (imageUrl != null) 'imageUrl' : imageUrl,
       'timestamp': FieldValue.serverTimestamp(),
     };
   }
@@ -26,6 +29,7 @@ class MessageModel {
       id: id,
       senderId: map['senderId'] ?? '',
       text: map['text'] ?? '',
+      imageUrl: map['imageUrl'],
       timestamp: map['timestamp'] != null
           ? (map['timestamp'] as Timestamp).toDate()
           : null,

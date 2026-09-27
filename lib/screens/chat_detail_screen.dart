@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../models/message_model.dart';
+import '../services/chat_image_service.dart';
 import '../services/chat_service.dart';
 import '../services/presence_service.dart';
 
@@ -22,8 +26,12 @@ class ChatDetailScreen extends StatefulWidget {
 
 class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final ChatService _chatService = ChatService();
+  final ChatImageService _imageService = ChatImageService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final ImagePicker _picker = ImagePicker();
+
+  bool _isUploadingImage = false;
 
   void _sendMessage() {
     final text = _messageController.text;
@@ -32,6 +40,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     _chatService.sendMessage(widget.matchId, text);
     _messageController.clear();
 
+    _scrollToBottom();
+  }
+
+  void _scrollToBottom() {
     Future.delayed(const Duration(milliseconds: 300), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -41,6 +53,86 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         );
       }
     });
+  }
+
+  Future<void> _pickAndSendImage() async {
+    final source = await _showSourcePicker();
+    if (source == null) return;
+
+    final picked = await _picker.pickImage(source: source);
+    if (picked == null) return;
+    if (!mounted) return;
+
+    final quality = await _showQualityPicker();
+    if (quality == null) return;
+
+    setState(() => _isUploadingImage = true);
+
+    try {
+      final currentUserId = _chatService.currentUserId ?? '';
+      final imageUrl = await _imageService.uploadChatImage(
+        imageFile: File(picked.path),
+        matchId: widget.matchId,
+        senderId: currentUserId,
+        quality: quality,
+      );
+
+      await _chatService.sendImageMessage(widget.matchId, imageUrl);
+      _scrollToBottom();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Gagal mengirim gambar: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isUploadingImage = false);
+    }
+  }
+
+  Future<ImageSource?> _showSourcePicker() {
+    return showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Ambil foto'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Pilih dari galeri'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<ImageQuality?> _showQualityPicker() {
+    return showModalBottomSheet<ImageQuality>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: const Text('Kirim biasa'),
+              subtitle: const Text('Lebih cepat, ukuran kecil'),
+              onTap: () => Navigator.pop(context, ImageQuality.standard),
+            ),
+            ListTile(
+              title: const Text('Kirim HD'),
+              subtitle: const Text('Kualitas lebih tinggi, ukuran lebih besar'),
+              onTap: () => Navigator.pop(context, ImageQuality.hd),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -131,6 +223,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   itemBuilder: (context, index) {
                     final message = messages[index];
                     final isMe = message.senderId == currentUserId;
+                    final hasImage =
+                        message.imageUrl != null &&
+                        message.imageUrl!.isNotEmpty;
 
                     return Align(
                       alignment: isMe
@@ -138,10 +233,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                           : Alignment.centerLeft,
                       child: Container(
                         margin: const EdgeInsets.symmetric(vertical: 4),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
+                        padding: hasImage
+                            ? const EdgeInsets.all(4)
+                            : const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 10,
+                              ),
                         constraints: BoxConstraints(
                           maxWidth: MediaQuery.of(context).size.width * 0.7,
                         ),
@@ -149,12 +246,38 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                           color: isMe ? Colors.orange : Colors.grey[300],
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: Text(
-                          message.text,
-                          style: TextStyle(
-                            color: isMe ? Colors.white : Colors.black87,
-                          ),
-                        ),
+                        child: hasImage
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  message.imageUrl!,
+                                  fit: BoxFit.cover,
+                                  loadingBuilder: (context, child, progress) {
+                                    if (progress == null) return child;
+                                    return const SizedBox(
+                                      height: 150,
+                                      width: 150,
+                                      child: Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    );
+                                  },
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      const SizedBox(
+                                        height: 150,
+                                        width: 150,
+                                        child: Center(
+                                          child: Icon(Icons.broken_image),
+                                        ),
+                                      ),
+                                ),
+                              )
+                            : Text(
+                                message.text,
+                                style: TextStyle(
+                                  color: isMe ? Colors.white : Colors.black87,
+                                ),
+                              ),
                       ),
                     );
                   },
@@ -168,6 +291,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               child: Row(
                 children: [
+                  IconButton(
+                    onPressed: _isUploadingImage ? null : _pickAndSendImage,
+                    icon: _isUploadingImage
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.image_outlined),
+                    color: Colors.orange,
+                  ),
                   Expanded(
                     child: TextField(
                       controller: _messageController,
