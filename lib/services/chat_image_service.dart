@@ -51,4 +51,17 @@ class ChatImageService {
     await outFile.writeAsBytes(compressedBytes);
     return outFile;
   }
+
+  Future<void> deleteChatImage(String imageUrl) async {
+    try {
+      // Ekstrak path file dari public URL Supabase
+      final uri = Uri.parse(imageUrl);
+      final segments = uri.pathSegments;
+      final bucketIndex = segments.indexOf(_bucket);
+      if (bucketIndex == -1 || bucketIndex + 1 >= segments.length) return;
+
+      final filePath = segments.sublist(bucketIndex + 1).join('/');
+      await _supabase.storage.from(_bucket).remove([filePath]);
+    } catch (_) {}
+  }
 }

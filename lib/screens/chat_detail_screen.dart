@@ -135,6 +135,37 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
+  Future<void> _handleLongPressMessage(MessageModel message) async {
+    final currentUserId = _chatService.currentUserId;
+    if (message.senderId != currentUserId) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus pesan?'),
+        content: const Text('Pesan ini akan dihapus untuk semua orang.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    if (message.imageUrl != null && message.imageUrl!.isNotEmpty) {
+      await _imageService.deleteChatImage(message.imageUrl!);
+    }
+
+    await _chatService.deleteMessage(widget.matchId, message.id);
+  }
+
   @override
   void dispose() {
     _messageController.dispose();
@@ -231,53 +262,57 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       alignment: isMe
                           ? Alignment.centerRight
                           : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        padding: hasImage
-                            ? const EdgeInsets.all(4)
-                            : const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 10,
-                              ),
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width * 0.7,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isMe ? Colors.orange : Colors.grey[300],
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: hasImage
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.network(
-                                  message.imageUrl!,
-                                  fit: BoxFit.cover,
-                                  loadingBuilder: (context, child, progress) {
-                                    if (progress == null) return child;
-                                    return const SizedBox(
-                                      height: 150,
-                                      width: 150,
-                                      child: Center(
-                                        child: CircularProgressIndicator(),
-                                      ),
-                                    );
-                                  },
-                                  errorBuilder: (context, error, stackTrace) =>
-                                      const SizedBox(
+                      child: GestureDetector(
+                        onLongPress: () => _handleLongPressMessage(message),
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          padding: hasImage
+                              ? const EdgeInsets.all(4)
+                              : const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 10,
+                                ),
+                          constraints: BoxConstraints(
+                            maxWidth: MediaQuery.of(context).size.width * 0.7,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isMe ? Colors.orange : Colors.grey[300],
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: hasImage
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.network(
+                                    message.imageUrl!,
+                                    fit: BoxFit.cover,
+                                    loadingBuilder: (context, child, progress) {
+                                      if (progress == null) return child;
+                                      return const SizedBox(
                                         height: 150,
                                         width: 150,
                                         child: Center(
-                                          child: Icon(Icons.broken_image),
+                                          child: CircularProgressIndicator(),
                                         ),
+                                      );
+                                    },
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            const SizedBox(
+                                      height: 150,
+                                      width: 150,
+                                      child: Center(
+                                        child: Icon(Icons.broken_image),
                                       ),
+                                    ),
+                                  ),
+                                )
+                              : Text(
+                                  message.text,
+                                  style: TextStyle(
+                                    color: isMe ? Colors.white : Colors.black87,
+                                  ),
                                 ),
-                              )
-                            : Text(
-                                message.text,
-                                style: TextStyle(
-                                  color: isMe ? Colors.white : Colors.black87,
-                                ),
-                              ),
+                        ),
                       ),
                     );
                   },
