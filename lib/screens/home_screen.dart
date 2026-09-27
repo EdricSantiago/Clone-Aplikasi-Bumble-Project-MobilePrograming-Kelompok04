@@ -1,3 +1,4 @@
+import 'package:bumble/services/presence_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -22,6 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 1;
 
   Future<void> _handleLogout(BuildContext context) async {
+    await PresenceService().goOffline();
     final authService = AuthService();
     await authService.logout();
   }

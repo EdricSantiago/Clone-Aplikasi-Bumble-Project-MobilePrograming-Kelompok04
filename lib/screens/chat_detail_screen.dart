@@ -56,37 +56,45 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: StreamBuilder<Map<String, dynamic>>(
-          stream: PresenceService().watchUserStatus(widget.otherUserId),
-          builder: (context, snapshot) {
-            final isOnline = snapshot.data?['online'] == true;
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(widget.otherUserName),
-                Row(
+        title: FutureBuilder<Map<String, dynamic>?>(
+          future: _chatService.getUserData(widget.otherUserId),
+          builder: (context, nameSnapshot) {
+            final resolvedName =
+                nameSnapshot.data?['name'] ?? widget.otherUserName;
+
+            return StreamBuilder<Map<String, dynamic>>(
+              stream: PresenceService().watchUserStatus(widget.otherUserId),
+              builder: (context, snapshot) {
+                final isOnline = snapshot.data?['online'] == true;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: isOnline ? Colors.green : Colors.grey,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      isOnline ? 'Online' : 'Offline',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.normal,
-                      ),
+                    Text(resolvedName),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: isOnline ? Colors.green : Colors.grey,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          isOnline ? 'Online' : 'Offline',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.normal,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
-                ),
-              ],
+                );
+              },
             );
           },
         ),
