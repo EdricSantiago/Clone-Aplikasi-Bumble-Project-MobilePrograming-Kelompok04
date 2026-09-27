@@ -85,4 +85,13 @@ class ChatService {
     final doc = await _firestore.collection('users').doc(userId).get();
     return doc.data();
   }
+
+  Future<void> deleteMessage(String matchId, String messageId) async {
+    await _firestore
+        .collection('matches')
+        .doc(matchId)
+        .collection('messages')
+        .doc(messageId)
+        .delete();
+  }
 }
