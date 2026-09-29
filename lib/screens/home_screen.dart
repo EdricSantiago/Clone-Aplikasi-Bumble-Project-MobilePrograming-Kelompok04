@@ -1,10 +1,10 @@
-import 'package:bumble/services/presence_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
+import '../widgets/photo_grid.dart';
 import '../widgets/swipe_card_stack.dart';
 import '../widgets/swipeable_card.dart';
 import 'settings_screen.dart';
@@ -23,7 +23,6 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 1;
 
   Future<void> _handleLogout(BuildContext context) async {
-    await PresenceService().goOffline();
     final authService = AuthService();
     await authService.logout();
   }
@@ -33,50 +32,13 @@ class _HomeScreenState extends State<HomeScreen> {
     if (currentUser == null) return;
 
     final action = direction == SwipeDirection.right ? 'like' : 'pass';
-    final firestore = FirebaseFirestore.instance;
 
-    await firestore
+    await FirebaseFirestore.instance
         .collection('users')
         .doc(currentUser.uid)
         .collection('swipes')
         .doc(target.uid)
         .set({'action': action, 'timestamp': FieldValue.serverTimestamp()});
-
-    if (action != 'like') return;
-
-    final theirSwipeOnMe = await firestore
-        .collection('users')
-        .doc(target.uid)
-        .collection('swipes')
-        .doc(currentUser.uid)
-        .get();
-
-    final isMutualLike =
-        theirSwipeOnMe.exists && theirSwipeOnMe.data()?['action'] == 'like';
-
-    if (!isMutualLike) return;
-
-    final matchId = _buildMatchId(currentUser.uid, target.uid);
-    final matchRef = firestore.collection('matches').doc(matchId);
-
-    final existingMatch = await matchRef.get();
-    if (existingMatch.exists) return;
-
-    await matchRef.set({
-      'userIds': [currentUser.uid, target.uid],
-      'lastMessage': '',
-      'createdAt': FieldValue.serverTimestamp(),
-      'lastMessageAt': FieldValue.serverTimestamp(),
-    });
-
-    if (mounted) {
-      _showMessage(context, 'Kamu match dengan ${target.name}!');
-    }
-  }
-
-  static String _buildMatchId(String uidA, String uidB) {
-    final sorted = [uidA, uidB]..sort();
-    return sorted.join('_');
   }
 
   void _onNavTap(int index) {
@@ -172,7 +134,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 'Profile',
                 style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
               )
-            : const Text('Home', style: TextStyle(fontWeight: FontWeight.bold)),
+            : const Text(
+                'Home',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
         actions: [
           if (_selectedIndex == 0)
             IconButton(
@@ -326,7 +291,6 @@ class _ProfileContent extends StatelessWidget {
             children: [
               _ProfileTab(label: 'BFF', selected: true),
               _ProfileTab(label: 'Date'),
-              _ProfileTab(label: 'Bizz'),
             ],
           ),
         ),
@@ -342,12 +306,7 @@ class _ProfileContent extends StatelessWidget {
         const _ProfileSectionTitle('Photos and videos'),
         const _ProfileDescription('Pick some that show the true you.'),
         const SizedBox(height: 14),
-        const _PhotoGrid(),
-        const SizedBox(height: 10),
-        const Text(
-          'Photo upload is a placeholder for now.',
-          style: TextStyle(color: Colors.black54, fontSize: 14),
-        ),
+        const PhotoGrid(),
         const SizedBox(height: 28),
         _ProfileRow(
           icon: Icons.verified_outlined,
@@ -468,37 +427,6 @@ class _ProfileContent extends StatelessWidget {
   }
 }
 
-class _PhotoGrid extends StatelessWidget {
-  const _PhotoGrid();
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: 6,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.82,
-      ),
-      itemBuilder: (context, index) => InkWell(
-        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Upload foto belum tersedia.')),
-        ),
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xffdddddd), width: 1.5),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: const Icon(Icons.add, size: 38),
-        ),
-      ),
-    );
-  }
-}
 
 class _ProfileTab extends StatelessWidget {
   const _ProfileTab({required this.label, this.selected = false});
