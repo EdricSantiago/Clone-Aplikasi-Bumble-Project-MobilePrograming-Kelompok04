@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../models/user_model.dart';
+import '../widgets/photo_grid.dart';
 import 'settings_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -200,7 +201,6 @@ class _ProfileContent extends StatelessWidget {
             children: [
               _ProfileTab(label: 'BFF', selected: true),
               _ProfileTab(label: 'Date'),
-              _ProfileTab(label: 'Bizz'),
             ],
           ),
         ),
@@ -216,12 +216,7 @@ class _ProfileContent extends StatelessWidget {
         const _ProfileSectionTitle('Photos and videos'),
         const _ProfileDescription('Pick some that show the true you.'),
         const SizedBox(height: 14),
-        const _PhotoGrid(),
-        const SizedBox(height: 10),
-        const Text(
-          'Photo upload is a placeholder for now.',
-          style: TextStyle(color: Colors.black54, fontSize: 14),
-        ),
+        const PhotoGrid(),
         const SizedBox(height: 28),
         _ProfileRow(
           icon: Icons.verified_outlined,
@@ -342,37 +337,6 @@ class _ProfileContent extends StatelessWidget {
   }
 }
 
-class _PhotoGrid extends StatelessWidget {
-  const _PhotoGrid();
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: 6,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.82,
-      ),
-      itemBuilder: (context, index) => InkWell(
-        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Upload foto belum tersedia.')),
-        ),
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xffdddddd), width: 1.5),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: const Icon(Icons.add, size: 38),
-        ),
-      ),
-    );
-  }
-}
 
 class _ProfileTab extends StatelessWidget {
   const _ProfileTab({required this.label, this.selected = false});
