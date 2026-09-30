@@ -14,7 +14,6 @@ class ProfileService {
 
   String? get currentUserId => _auth.currentUser?.uid;
 
-  /// Mengambil daftar URL foto profil milik pengguna dari Firestore
   Future<List<String>> getUserPhotos(String userId) async {
     final uid = userId.isNotEmpty ? userId : currentUserId;
     if (uid == null || uid.isEmpty) return [];
@@ -33,7 +32,6 @@ class ProfileService {
     }
   }
 
-  /// Mengunggah foto ke Supabase Storage dan memperbarui Firestore
   Future<String?> uploadProfilePhoto({
     required String userId,
     required Uint8List imageBytes,
@@ -58,12 +56,10 @@ class ProfileService {
 
       final publicUrl = _supabase.storage.from(_bucket).getPublicUrl(path);
 
-      // Tambahkan URL foto ke daftar 'photos' di Firestore
       await _firestore.collection('users').doc(uid).set({
         'photos': FieldValue.arrayUnion([publicUrl]),
       }, SetOptions(merge: true));
 
-      // Ambil daftar foto terbaru untuk memastikan foto pertama diset sebagai 'photoUrl' utama
       final doc = await _firestore.collection('users').doc(uid).get();
       final List<dynamic> photos = doc.data()?['photos'] ?? [];
       if (photos.isNotEmpty) {
@@ -78,7 +74,6 @@ class ProfileService {
     }
   }
 
-  /// Menghapus foto dari Supabase Storage dan memperbarui Firestore
   Future<void> deleteProfilePhoto({
     required String userId,
     required String photoUrl,
@@ -87,12 +82,10 @@ class ProfileService {
     if (uid == null || uid.isEmpty) return;
 
     try {
-      // Hapus dari array 'photos' di Firestore
       await _firestore.collection('users').doc(uid).update({
         'photos': FieldValue.arrayRemove([photoUrl]),
       });
 
-      // Hapus file fisik dari Supabase Storage
       final uri = Uri.parse(photoUrl);
       final segments = uri.pathSegments;
       final bucketIndex = segments.indexOf(_bucket);
@@ -101,7 +94,6 @@ class ProfileService {
         await _supabase.storage.from(_bucket).remove([filePath]);
       }
 
-      // Perbarui 'photoUrl' utama dengan foto pertama yang tersisa (jika ada)
       final doc = await _firestore.collection('users').doc(uid).get();
       final List<dynamic> photos = doc.data()?['photos'] ?? [];
       final newMainUrl = photos.isNotEmpty ? photos.first.toString() : '';
@@ -112,7 +104,6 @@ class ProfileService {
     } catch (_) {}
   }
 
-  /// Memperbarui status verifikasi akun di Firestore
   Future<void> verifyProfile(String userId) async {
     final uid = userId.isNotEmpty ? userId : currentUserId;
     if (uid == null || uid.isEmpty) return;
