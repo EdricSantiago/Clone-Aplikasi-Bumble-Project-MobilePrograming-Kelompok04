@@ -10,7 +10,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _dateModeEnabled = true;
   bool _incognitoModeEnabled = false;
   bool _autoSpotlightEnabled = false;
 
@@ -45,17 +44,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           _SettingsTile(
             title: 'Type of connection',
-            trailing: 'BFF',
-            onTap: () => _showUnavailable('Type of connection'),
-          ),
-          const SizedBox(height: 14),
-          _SettingsToggleTile(
-            title: 'Date mode',
-            value: _dateModeEnabled,
-            onChanged: (value) => setState(() => _dateModeEnabled = value),
-          ),
-          const _Description(
-            'Hide your profile in Date and just use BFF. If you do this, you\'ll lose your connections and chats in Date.',
+            trailing: 'Date',
+            showChevron: false,
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Anda sedang di mode Date')),
+              );
+            },
           ),
           const SizedBox(height: 14),
           _SettingsTile(
@@ -63,7 +58,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () => _showUnavailable('Snooze mode'),
           ),
           const _Description(
-            'Hide your profile temporarily, in all modes. You won\'t lose any connections or chats.',
+            'Hide your profile temporarily. You won\'t lose any connections or chats.',
           ),
           const SizedBox(height: 14),
           _SettingsToggleTile(
@@ -72,7 +67,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: (value) => setState(() => _incognitoModeEnabled = value),
           ),
           const _Description(
-            'Only people you\'ve liked already, or like later, will see your profile. If you turn on Incognito Mode for Date, this won\'t apply across Bizz or BFF.',
+            'Only people you\'ve liked already, or like later, will see your profile.',
           ),
           const SizedBox(height: 14),
           _SettingsToggleTile(
@@ -178,11 +173,13 @@ class _SettingsTile extends StatelessWidget {
     required this.onTap,
     this.trailing,
     this.leading,
+    this.showChevron = true,
   });
 
   final String title;
   final String? trailing;
   final Widget? leading;
+  final bool showChevron;
   final VoidCallback onTap;
 
   @override
@@ -214,8 +211,10 @@ class _SettingsTile extends StatelessWidget {
                 trailing!,
                 style: const TextStyle(fontSize: 17, color: Colors.black54),
               ),
-            const SizedBox(width: 18),
-            const Icon(Icons.arrow_forward_ios, size: 25),
+            if (showChevron) ...[
+              const SizedBox(width: 18),
+              const Icon(Icons.arrow_forward_ios, size: 25),
+            ],
           ],
         ),
       ),

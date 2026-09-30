@@ -1,11 +1,17 @@
-import 'dart:io';
-
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-class PhotoGrid extends StatefulWidget {
-  const PhotoGrid({super.key, this.slotCount = 6});
+import '../services/profile_service.dart';
 
+class PhotoGrid extends StatefulWidget {
+  const PhotoGrid({
+    super.key,
+    this.userId,
+    this.slotCount = 6,
+  });
+
+  final String? userId;
   final int slotCount;
 
   @override
@@ -13,27 +19,113 @@ class PhotoGrid extends StatefulWidget {
 }
 
 class _PhotoGridState extends State<PhotoGrid> {
-  final List<File> _photos = [];
-  final _picker = ImagePicker();
+  final ProfileService _profileService = ProfileService();
+  final ImagePicker _picker = ImagePicker();
 
-  Future<void> _pickPhoto() async {
+  List<String> _photos = [];
+  bool _isLoading = true;
+  int? _uploadingIndex;
+
+  String get _effectiveUserId {
+    if (widget.userId != null && widget.userId!.isNotEmpty) {
+      return widget.userId!;
+    }
+    return FirebaseAuth.instance.currentUser?.uid ?? '';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPhotos();
+  }
+
+  @override
+  void didUpdateWidget(covariant PhotoGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.userId != widget.userId) {
+      _fetchPhotos();
+    }
+  }
+
+  Future<void> _fetchPhotos() async {
+    final uid = _effectiveUserId;
+    if (uid.isEmpty) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    final photos = await _profileService.getUserPhotos(uid);
+    if (mounted) {
+      setState(() {
+        _photos = photos;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _pickAndUploadPhoto(int index) async {
+    final uid = _effectiveUserId;
+    if (uid.isEmpty) return;
+
     final XFile? picked = await _picker.pickImage(
       source: ImageSource.gallery,
       imageQuality: 85,
     );
     if (picked == null) return;
 
-    if (_photos.length < widget.slotCount) {
-      setState(() => _photos.add(File(picked.path)));
+    final bytes = await picked.readAsBytes();
+
+    setState(() => _uploadingIndex = index);
+
+    final uploadedUrl = await _profileService.uploadProfilePhoto(
+      userId: uid,
+      imageBytes: bytes,
+    );
+
+    if (mounted) {
+      setState(() => _uploadingIndex = null);
+      if (uploadedUrl != null) {
+        setState(() {
+          if (index < _photos.length) {
+            _photos[index] = uploadedUrl;
+          } else {
+            _photos.add(uploadedUrl);
+          }
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal mengunggah foto.')),
+        );
+      }
     }
   }
 
-  void _removePhoto(int index) {
-    setState(() => _photos.removeAt(index));
+  Future<void> _removePhoto(int index) async {
+    final uid = _effectiveUserId;
+    if (index >= _photos.length || uid.isEmpty) return;
+
+    final photoUrl = _photos[index];
+
+    setState(() {
+      _photos.removeAt(index);
+    });
+
+    await _profileService.deleteProfilePhoto(
+      userId: uid,
+      photoUrl: photoUrl,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const SizedBox(
+        height: 180,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -46,11 +138,27 @@ class _PhotoGridState extends State<PhotoGrid> {
       ),
       itemBuilder: (context, index) {
         final isFilled = index < _photos.length;
-        return isFilled ? _FilledSlot(
-          photo: _photos[index],
-          isMain: index == 0,
-          onRemove: () => _removePhoto(index),
-        ) : _EmptySlot(onTap: _pickPhoto);
+        final isUploading = _uploadingIndex == index;
+
+        if (isUploading) {
+          return Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: const Color(0xffdddddd), width: 1.5),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        }
+
+        return isFilled
+            ? _FilledSlot(
+                photoUrl: _photos[index],
+                isMain: index == 0,
+                onRemove: () => _removePhoto(index),
+              )
+            : _EmptySlot(onTap: () => _pickAndUploadPhoto(index));
       },
     );
   }
@@ -79,12 +187,12 @@ class _EmptySlot extends StatelessWidget {
 
 class _FilledSlot extends StatelessWidget {
   const _FilledSlot({
-    required this.photo,
+    required this.photoUrl,
     required this.isMain,
     required this.onRemove,
   });
 
-  final File photo;
+  final String photoUrl;
   final bool isMain;
   final VoidCallback onRemove;
 
@@ -95,7 +203,14 @@ class _FilledSlot extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.file(photo, fit: BoxFit.cover),
+          Image.network(
+            photoUrl,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Container(
+              color: Colors.grey[200],
+              child: const Icon(Icons.broken_image, color: Colors.grey),
+            ),
+          ),
           if (isMain)
             Positioned(
               bottom: 8,
@@ -108,7 +223,11 @@ class _FilledSlot extends StatelessWidget {
                 ),
                 child: const Text(
                   'Main',
-                  style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),

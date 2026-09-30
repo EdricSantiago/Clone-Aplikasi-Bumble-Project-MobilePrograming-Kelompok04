@@ -9,6 +9,21 @@ class UserModel {
   final String photoUrl;
   final String gender;
   final String interestedIn;
+  final bool isVerified;
+  final List<String> photos;
+
+  final String work;
+  final String education;
+  final String location;
+  final String hometown;
+
+  final String lookingFor;
+  final String relationship;
+  final String haveKids;
+  final String smoking;
+  final String drinking;
+  final String exercise;
+  final String interests;
 
   UserModel({
     required this.uid,
@@ -19,6 +34,19 @@ class UserModel {
     this.photoUrl = '',
     this.gender = '',
     this.interestedIn = '',
+    this.isVerified = false,
+    this.photos = const [],
+    this.work = '',
+    this.education = '',
+    this.location = '',
+    this.hometown = '',
+    this.lookingFor = '',
+    this.relationship = '',
+    this.haveKids = '',
+    this.smoking = '',
+    this.drinking = '',
+    this.exercise = '',
+    this.interests = '',
   });
 
   int get age {
@@ -41,6 +69,19 @@ class UserModel {
       'photoUrl': photoUrl,
       'gender': gender,
       'interestedIn': interestedIn,
+      'isVerified': isVerified,
+      'photos': photos,
+      'work': work,
+      'education': education,
+      'location': location,
+      'hometown': hometown,
+      'lookingFor': lookingFor,
+      'relationship': relationship,
+      'haveKids': haveKids,
+      'smoking': smoking,
+      'drinking': drinking,
+      'exercise': exercise,
+      'interests': interests,
       'createdAt': FieldValue.serverTimestamp(),
     };
   }
@@ -57,6 +98,19 @@ class UserModel {
       photoUrl: map['photoUrl'] ?? '',
       gender: map['gender'] ?? '',
       interestedIn: map['interestedIn'] ?? '',
+      isVerified: map['isVerified'] ?? false,
+      photos: List<String>.from(map['photos'] ?? []),
+      work: map['work'] ?? '',
+      education: map['education'] ?? '',
+      location: map['location'] ?? '',
+      hometown: map['hometown'] ?? '',
+      lookingFor: map['lookingFor'] ?? '',
+      relationship: map['relationship'] ?? '',
+      haveKids: map['haveKids'] ?? '',
+      smoking: map['smoking'] ?? '',
+      drinking: map['drinking'] ?? '',
+      exercise: map['exercise'] ?? '',
+      interests: map['interests'] ?? '',
     );
   }
 }
