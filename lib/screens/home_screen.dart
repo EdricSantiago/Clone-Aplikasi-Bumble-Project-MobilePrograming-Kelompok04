@@ -1,161 +1,220 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
+import '../services/discovery_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/swipe_card_stack.dart';
 import '../widgets/swipeable_card.dart';
 import 'chat_list_screen.dart';
+import 'discovery_filter_screen.dart';
+import 'liked_you_screen.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
 
-const Color kBumbleYellow = Color(0xFFFFD84D);
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
-
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final _discovery = DiscoveryService();
+  late final Stream<DiscoveryData> _stream;
   int _selectedIndex = 1;
+  bool _legacySyncFailed = false;
+  @override
+  void initState() {
+    super.initState();
+    _stream = _discovery.watchDiscovery();
+    _syncLegacyLikes();
+  }
 
-  Future<void> _handleLogout(BuildContext context) async {
-    final authService = AuthService();
-    await authService.logout();
+  Future<void> _syncLegacyLikes() async {
+    try {
+      await _discovery.syncLegacyLikes();
+      if (mounted) setState(() => _legacySyncFailed = false);
+    } catch (_) {
+      if (mounted) setState(() => _legacySyncFailed = true);
+    }
   }
 
   Future<void> _recordSwipe(UserModel target, SwipeDirection direction) async {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) return;
-
-    final action = direction == SwipeDirection.right ? 'like' : 'pass';
-
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser.uid)
-        .collection('swipes')
-        .doc(target.uid)
-        .set({'action': action, 'timestamp': FieldValue.serverTimestamp()});
-  }
-
-  void _onNavTap(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
-  Widget _buildPeoplePage() {
-    final currentUid = FirebaseAuth.instance.currentUser?.uid;
-
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance.collection('users').snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (snapshot.hasError) {
-          return Center(child: Text('Gagal memuat data: ${snapshot.error}'));
-        }
-
-        final docs = snapshot.data?.docs ?? [];
-        final profiles = docs
-            .where((doc) => doc.id != currentUid)
-            .map((doc) => UserModel.fromMap(doc.id, doc.data()))
-            .toList();
-
-        return SwipeCardStack(profiles: profiles, onSwiped: _recordSwipe);
-      },
+    final matchId = await _discovery.swipe(
+      target.uid,
+      like: direction == SwipeDirection.right,
     );
+    if (mounted && matchId != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Kamu match dengan ${target.name}!'),
+          action: SnackBarAction(
+            label: 'Chats',
+            onPressed: () => setState(() => _selectedIndex = 3),
+          ),
+        ),
+      );
+    }
   }
 
   @override
-  Widget build(BuildContext context) {
-    final pages = [
-      const ProfileScreen(),
-      _buildPeoplePage(),
-      const Center(child: Text('Halaman ini masih dalam pengerjaan!.')),
-      const ChatListScreen(),
-    ];
-
-    final isProfileTab = _selectedIndex == 0;
-    final appBarBgColor = isProfileTab ? Colors.white : kBumbleYellow;
-    final bodyBgColor = isProfileTab ? Colors.white : kBumbleYellow;
-
-    return Scaffold(
-      backgroundColor: bodyBgColor,
-      appBar: AppBar(
-        backgroundColor: appBarBgColor,
-        elevation: 0,
-        foregroundColor: Colors.black,
-        title: _selectedIndex == 0
-            ? const Text(
-                'Profile',
-                style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
-              )
-            : const Text(
-                'Home',
-                style: TextStyle(fontWeight: FontWeight.bold),
+  Widget build(BuildContext context) => StreamBuilder<DiscoveryData>(
+    stream: _stream,
+    builder: (context, snapshot) {
+      final data = snapshot.data;
+      final title = ['Profile', 'People', 'Liked You', 'Chats'][_selectedIndex];
+      Widget body;
+      if (_selectedIndex == 0) {
+        body = const ProfileScreen();
+      } else if (_selectedIndex == 3) {
+        body = const ChatListScreen();
+      } else if (snapshot.hasError) {
+        body = const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Data gagal dimuat. Periksa koneksi dan Firestore Rules (lihat PANDUAN_FITUR.md).',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        );
+      } else if (data == null) {
+        body = const Center(
+          child: CircularProgressIndicator(color: Colors.black),
+        );
+      } else if (_selectedIndex == 2) {
+        body = LikedYouScreen(profiles: data.likedYou);
+      } else {
+        body = Column(
+          children: [
+            if (data.filter.isActive)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    const Icon(Icons.tune, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Filter aktif • ${data.filter.minAge}–${data.filter.maxAge} tahun',
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              DiscoveryFilterScreen(initial: data.filter),
+                        ),
+                      ),
+                      child: const Text(
+                        'Ubah',
+                        style: TextStyle(color: Colors.black),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-        actions: [
-          if (_selectedIndex == 0)
-            IconButton(
-              icon: const Icon(Icons.help_outline, size: 31),
-              tooltip: 'Help',
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Help belum tersedia.')),
-                );
-              },
+            Expanded(
+              child: SwipeCardStack(
+                profiles: data.people,
+                onSwiped: _recordSwipe,
+              ),
             ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined, size: 31),
-            tooltip: 'Settings',
-            onPressed: () {
-              Navigator.push(
+          ],
+        );
+      }
+      return Scaffold(
+        backgroundColor: _selectedIndex == 0 || _selectedIndex == 3
+            ? Colors.white
+            : kBumbleYellow,
+        appBar: AppBar(
+          backgroundColor: _selectedIndex == 0 ? Colors.white : kBumbleYellow,
+          foregroundColor: Colors.black,
+          elevation: 0,
+          title: Text(
+            title,
+            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
+          ),
+          actions: [
+            if (_selectedIndex == 1)
+              IconButton(
+                icon: Icon(
+                  data?.filter.isActive == true ? Icons.filter_alt : Icons.tune,
+                ),
+                tooltip: 'Filter matching',
+                onPressed: data == null
+                    ? null
+                    : () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              DiscoveryFilterScreen(initial: data.filter),
+                        ),
+                      ),
+              ),
+            IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              tooltip: 'Settings',
+              onPressed: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              );
-            },
-          ),
-          if (_selectedIndex != 0)
-            IconButton(
-              icon: const Icon(Icons.logout),
-              tooltip: 'Logout',
-              onPressed: () => _handleLogout(context),
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              ),
             ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: SafeArea(child: pages[_selectedIndex]),
-      bottomNavigationBar: BottomNavigationBar(
-        selectedItemColor: Colors.black,
-        unselectedItemColor: Colors.black54,
-        backgroundColor: Colors.white,
-        currentIndex: _selectedIndex,
-        onTap: _onNavTap,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: 'Profile',
+            if (_selectedIndex != 0)
+              IconButton(
+                icon: const Icon(Icons.logout),
+                tooltip: 'Logout',
+                onPressed: () => AuthService().logout(),
+              ),
+          ],
+        ),
+        body: SafeArea(
+          child: Column(
+            children: [
+              if (_legacySyncFailed)
+                MaterialBanner(
+                  content: const Text(
+                    'Like lama belum tersinkron. Periksa koneksi dan Firestore Rules.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: _syncLegacyLikes,
+                      child: const Text('Coba lagi'),
+                    ),
+                  ],
+                ),
+              Expanded(child: body),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people_alt),
-            label: 'People',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.favorite_border),
-            label: 'Liked You',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_outline),
-            label: 'Chats',
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          selectedItemColor: Colors.black,
+          unselectedItemColor: Colors.black54,
+          backgroundColor: Colors.white,
+          currentIndex: _selectedIndex,
+          onTap: (index) => setState(() => _selectedIndex = index),
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline),
+              label: 'Profile',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.people_alt),
+              label: 'People',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.favorite_border),
+              label: 'Liked You',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.chat_bubble_outline),
+              label: 'Chats',
+            ),
+          ],
+        ),
+      );
+    },
+  );
 }

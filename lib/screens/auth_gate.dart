@@ -39,7 +39,7 @@ class _AuthGateState extends State<AuthGate> {
             _lastInitializedUid = user.uid;
             PresenceService().initPresence();
           }
-          return const HomeScreen();
+          return HomeScreen(key: ValueKey(user.uid));
         }
 
         _lastInitializedUid = null;
