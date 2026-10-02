@@ -14,6 +14,17 @@ class ChatListScreen extends StatefulWidget {
 
 class _ChatListScreenState extends State<ChatListScreen> {
   final ChatService _chatService = ChatService();
+
+  final Map<String, Future<Map<String, dynamic>?>> _userDataCache = {};
+
+  Future<Map<String, dynamic>?> _getCachedUserData(String uid) {
+    if (uid.isEmpty) return Future.value(null);
+    return _userDataCache.putIfAbsent(
+      uid,
+      () => _chatService.getUserData(uid),
+    );
+  }
+
   Stream<Map<String, dynamic>> _presenceStream(String uid) {
     return PresenceService().watchUserStatus(uid);
   }
@@ -44,7 +55,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
               final otherUserId = match.getOtherUserId(currentUserId ?? '');
 
               return FutureBuilder<Map<String, dynamic>?>(
-                future: _chatService.getUserData(otherUserId),
+                future: _getCachedUserData(otherUserId),
                 builder: (context, userSnapshot) {
                   final otherUserName =
                       userSnapshot.data?['name'] ?? 'Memuat...';

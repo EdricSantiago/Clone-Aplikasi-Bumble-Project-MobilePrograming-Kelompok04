@@ -58,8 +58,40 @@ class ChatService {
     });
   }
 
+  Future<void> sendImageMessage(String matchId, String imageUrl) async {
+    final uid = currentUserId;
+    if (uid == null) return;
+
+    final message = MessageModel(
+      id: '',
+      senderId: uid,
+      text: '',
+      imageUrl: imageUrl,
+    );
+
+    await _firestore
+        .collection('matches')
+        .doc(matchId)
+        .collection('messages')
+        .add(message.toMap());
+
+    await _firestore.collection('matches').doc(matchId).update({
+      'lastMessage': '📷 Photo',
+      'lastMessageAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   Future<Map<String, dynamic>?> getUserData(String userId) async {
     final doc = await _firestore.collection('users').doc(userId).get();
     return doc.data();
+  }
+
+  Future<void> deleteMessage(String matchId, String messageId) async {
+    await _firestore
+        .collection('matches')
+        .doc(matchId)
+        .collection('messages')
+        .doc(messageId)
+        .delete();
   }
 }
