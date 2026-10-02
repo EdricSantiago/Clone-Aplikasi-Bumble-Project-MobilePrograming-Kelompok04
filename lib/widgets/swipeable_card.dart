@@ -48,11 +48,12 @@ class _SwipeableCardState extends State<SwipeableCard>
 
   void _onPanUpdate(DragUpdateDetails details) {
     setState(() {
-      _dragOffset += details.delta;
+      if (!_controller.isAnimating) _dragOffset += details.delta;
     });
   }
 
   void _onPanEnd(DragEndDetails details) {
+    if (_controller.isAnimating) return;
     final screenWidth = MediaQuery.of(context).size.width;
 
     if (_dragOffset.dx > _swipeThreshold) {
@@ -71,7 +72,7 @@ class _SwipeableCardState extends State<SwipeableCard>
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     _controller.forward(from: 0).whenComplete(() {
-      widget.onSwiped(direction);
+      if (mounted) widget.onSwiped(direction);
     });
   }
 

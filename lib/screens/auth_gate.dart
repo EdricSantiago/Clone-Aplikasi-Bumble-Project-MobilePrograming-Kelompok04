@@ -5,8 +5,15 @@ import 'home_screen.dart';
 import 'login_screen.dart';
 import '../services/presence_service.dart';
 
-class AuthGate extends StatelessWidget {
+class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  String? _lastInitializedUid;
 
   @override
   Widget build(BuildContext context) {
@@ -28,10 +35,14 @@ class AuthGate extends StatelessWidget {
         final User? user = snapshot.data;
 
         if (user != null) {
-          PresenceService().initPresence();
-          return const HomeScreen();
+          if (_lastInitializedUid != user.uid) {
+            _lastInitializedUid = user.uid;
+            PresenceService().initPresence();
+          }
+          return HomeScreen(key: ValueKey(user.uid));
         }
 
+        _lastInitializedUid = null;
         return const LoginScreen();
       },
     );

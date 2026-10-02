@@ -5,7 +5,8 @@ import 'swipeable_card.dart';
 
 class SwipeCardStack extends StatefulWidget {
   final List<UserModel> profiles;
-  final void Function(UserModel profile, SwipeDirection direction)? onSwiped;
+  final Future<void> Function(UserModel profile, SwipeDirection direction)?
+  onSwiped;
 
   const SwipeCardStack({super.key, required this.profiles, this.onSwiped});
 
@@ -15,6 +16,7 @@ class SwipeCardStack extends StatefulWidget {
 
 class _SwipeCardStackState extends State<SwipeCardStack> {
   late List<UserModel> _remaining;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -30,66 +32,87 @@ class _SwipeCardStackState extends State<SwipeCardStack> {
     }
   }
 
-  void _removeTop(SwipeDirection direction) {
-    if (_remaining.isEmpty) return;
+  Future<void> _removeTop(SwipeDirection direction) async {
+    if (_remaining.isEmpty || _saving) return;
     final swiped = _remaining.first;
-    setState(() {
-      _remaining.removeAt(0);
-    });
-    widget.onSwiped?.call(swiped, direction);
+    setState(() => _saving = true);
+    try {
+      await widget.onSwiped?.call(swiped, direction);
+      if (mounted)
+        setState(
+          () => _remaining.removeWhere((user) => user.uid == swiped.uid),
+        );
+    } catch (_) {
+      if (mounted) {
+        // Recreate the card to reset its fly-out animation after a failed write.
+        setState(() => _cardVersion++);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Pilihan gagal disimpan. Coba lagi.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
+
+  int _cardVersion = 0;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(12.0),
-      child: Column(
-        children: [
-          Expanded(
-            child: _remaining.isEmpty
-                ? const Center(
-                    child: Text(
-                      'Tidak ada profil lagi untuk saat ini.',
-                      style: TextStyle(fontSize: 16, color: Colors.black54),
-                    ),
-                  )
-                : Stack(
-                    children: [
-                      for (int i = _remaining.length - 1; i >= 0; i--)
-                        if (i == 0)
-                          SwipeableCard(
-                            key: ValueKey(_remaining[i].uid),
-                            profile: _remaining[i],
-                            onSwiped: _removeTop,
-                          )
-                        else if (i == 1)
-                          Positioned.fill(
-                            child: Transform.scale(
-                              scale: 0.95,
-                              child: _StaticCard(profile: _remaining[i]),
+      child: AbsorbPointer(
+        absorbing: _saving,
+        child: Column(
+          children: [
+            Expanded(
+              child: _remaining.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'Belum ada profil yang sesuai. Coba ubah filter atau kembali nanti.',
+                        style: TextStyle(fontSize: 16, color: Colors.black54),
+                      ),
+                    )
+                  : Stack(
+                      children: [
+                        for (int i = _remaining.length - 1; i >= 0; i--)
+                          if (i == 0)
+                            SwipeableCard(
+                              key: ValueKey(
+                                '${_remaining[i].uid}_$_cardVersion',
+                              ),
+                              profile: _remaining[i],
+                              onSwiped: _removeTop,
+                            )
+                          else if (i == 1)
+                            Positioned.fill(
+                              child: Transform.scale(
+                                scale: 0.95,
+                                child: _StaticCard(profile: _remaining[i]),
+                              ),
                             ),
-                          ),
-                    ],
-                  ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _ActionButton(
-                icon: Icons.close,
-                color: Colors.red,
-                onTap: () => _removeTop(SwipeDirection.left),
-              ),
-              const SizedBox(width: 32),
-              _ActionButton(
-                icon: Icons.favorite,
-                color: Colors.green,
-                onTap: () => _removeTop(SwipeDirection.right),
-              ),
-            ],
-          ),
-        ],
+                      ],
+                    ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _ActionButton(
+                  icon: Icons.close,
+                  color: Colors.red,
+                  onTap: () => _removeTop(SwipeDirection.left),
+                ),
+                const SizedBox(width: 32),
+                _ActionButton(
+                  icon: Icons.favorite,
+                  color: Colors.green,
+                  onTap: () => _removeTop(SwipeDirection.right),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
