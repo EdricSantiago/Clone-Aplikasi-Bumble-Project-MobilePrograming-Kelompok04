@@ -1,9 +1,11 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../services/presence_service.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
-import '../services/presence_service.dart';
 
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
@@ -13,36 +15,70 @@ class AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<AuthGate> {
-  String? _lastInitializedUid;
+  final _presence = PresenceService();
+
+  late final Stream<User?> _authStateStream;
+  late final StreamSubscription<User?> _presenceSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _authStateStream = FirebaseAuth.instance.authStateChanges();
+
+    _presenceSubscription = _authStateStream.listen(
+      (user) {
+        if (user == null) {
+          unawaited(_presence.goOffline());
+        } else {
+          _presence.initPresence();
+        }
+      },
+      onError: (Object error) {
+        debugPrint('Gagal memantau sesi presence: $error');
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    unawaited(_presenceSubscription.cancel());
+    unawaited(_presence.goOffline());
+
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
+      stream: _authStateStream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
           );
         }
 
         if (snapshot.hasError) {
           return Scaffold(
-            body: Center(child: Text('Terjadi kesalahan: ${snapshot.error}')),
+            body: Center(
+              child: Text(
+                'Terjadi kesalahan: ${snapshot.error}',
+              ),
+            ),
           );
         }
 
         final User? user = snapshot.data;
 
         if (user != null) {
-          if (_lastInitializedUid != user.uid) {
-            _lastInitializedUid = user.uid;
-            PresenceService().initPresence();
-          }
-          return HomeScreen(key: ValueKey(user.uid));
+          return HomeScreen(
+            key: ValueKey(user.uid),
+          );
         }
 
-        _lastInitializedUid = null;
         return const LoginScreen();
       },
     );
