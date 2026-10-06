@@ -32,20 +32,68 @@ class ProfileService {
     }
   }
 
+  Future<void> setMainProfilePhoto({
+    required String userId,
+    required String photoUrl,
+  }) async {
+    final uid = userId.isNotEmpty ? userId : currentUserId;
+    if (uid == null || uid.isEmpty) return;
+
+    final userDoc = _firestore.collection('users').doc(uid);
+    await _firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(userDoc);
+      final data = snapshot.data() ?? {};
+      final existingPhotos = (data['photos'] as List<dynamic>? ?? [])
+          .map((photo) => photo.toString())
+          .where((photo) => photo.isNotEmpty)
+          .toList();
+
+      final reorderedPhotos = <String>[
+        photoUrl,
+        ...existingPhotos.where((p) => p != photoUrl),
+      ];
+
+      transaction.set(userDoc, {
+        'photos': reorderedPhotos,
+        'photoUrl': photoUrl,
+      }, SetOptions(merge: true));
+    });
+  }
+
   Future<String?> uploadProfilePhoto({
     required String userId,
     required Uint8List imageBytes,
+    required String fileName,
+    bool setAsMain = false,
   }) async {
     final uid = userId.isNotEmpty ? userId : currentUserId;
     if (uid == null || uid.isEmpty) return null;
 
     try {
-      final processedBytes = _compressImage(imageBytes);
+      final existingFiles = await _supabase.storage
+          .from(_bucket)
+          .list(path: 'profiles/$uid');
 
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}_$uid.jpg';
+      final isDuplicate = existingFiles.any(
+        (file) => file.name.toLowerCase() == fileName.toLowerCase(),
+      );
+
+      if (isDuplicate) {
+        throw Exception("Gagal upload. Foto '$fileName' sudah ada");
+      }
+    } catch (e) {
+      if (e.toString().contains('sudah ada')) {
+        rethrow;
+      }
+    }
+
+    try {
+      final processedBytes = _compressImage(imageBytes);
       final path = 'profiles/$uid/$fileName';
 
-      await _supabase.storage.from(_bucket).uploadBinary(
+      await _supabase.storage
+          .from(_bucket)
+          .uploadBinary(
             path,
             processedBytes,
             fileOptions: const FileOptions(
@@ -55,21 +103,57 @@ class ProfileService {
           );
 
       final publicUrl = _supabase.storage.from(_bucket).getPublicUrl(path);
+      final userDoc = _firestore.collection('users').doc(uid);
 
-      await _firestore.collection('users').doc(uid).set({
-        'photos': FieldValue.arrayUnion([publicUrl]),
-      }, SetOptions(merge: true));
+      if (setAsMain) {
+        await _firestore.runTransaction((transaction) async {
+          final snapshot = await transaction.get(userDoc);
+          final data = snapshot.data() ?? {};
+          final existingPhotos = (data['photos'] as List<dynamic>? ?? [])
+              .map((photo) => photo.toString())
+              .where((photo) => photo.isNotEmpty)
+              .toList();
+          final previousMain = data['photoUrl']?.toString() ?? '';
 
-      final doc = await _firestore.collection('users').doc(uid).get();
-      final List<dynamic> photos = doc.data()?['photos'] ?? [];
-      if (photos.isNotEmpty) {
-        await _firestore.collection('users').doc(uid).update({
-          'photoUrl': photos.first.toString(),
+          final reorderedPhotos = <String>[
+            publicUrl,
+            if (previousMain.isNotEmpty && previousMain != publicUrl)
+              previousMain
+            else
+              ...[],
+          ];
+
+          reorderedPhotos.addAll(
+            existingPhotos.where(
+              (photo) =>
+                  photo != publicUrl &&
+                  photo != previousMain &&
+                  !reorderedPhotos.contains(photo),
+            ),
+          );
+
+          transaction.set(userDoc, {
+            'photos': reorderedPhotos,
+            'photoUrl': publicUrl,
+          }, SetOptions(merge: true));
         });
+      } else {
+        await userDoc.set({
+          'photos': FieldValue.arrayUnion([publicUrl]),
+        }, SetOptions(merge: true));
+
+        final doc = await userDoc.get();
+        final List<dynamic> photos = doc.data()?['photos'] ?? [];
+        if (photos.isNotEmpty) {
+          await userDoc.update({'photoUrl': photos.first.toString()});
+        }
       }
 
       return publicUrl;
-    } catch (_) {
+    } catch (e) {
+      if (e.toString().contains('sudah ada')) {
+        rethrow;
+      }
       return null;
     }
   }

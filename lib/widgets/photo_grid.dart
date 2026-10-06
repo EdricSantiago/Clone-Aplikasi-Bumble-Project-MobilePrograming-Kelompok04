@@ -74,28 +74,43 @@ class _PhotoGridState extends State<PhotoGrid> {
     );
     if (picked == null) return;
 
+    final fileName = picked.name;
     final bytes = await picked.readAsBytes();
 
     setState(() => _uploadingIndex = index);
 
-    final uploadedUrl = await _profileService.uploadProfilePhoto(
-      userId: uid,
-      imageBytes: bytes,
-    );
+    try {
+      final uploadedUrl = await _profileService.uploadProfilePhoto(
+        userId: uid,
+        imageBytes: bytes,
+        fileName: fileName,
+      );
 
-    if (mounted) {
-      setState(() => _uploadingIndex = null);
-      if (uploadedUrl != null) {
-        setState(() {
-          if (index < _photos.length) {
-            _photos[index] = uploadedUrl;
-          } else {
-            _photos.add(uploadedUrl);
-          }
-        });
-      } else {
+      if (mounted) {
+        setState(() => _uploadingIndex = null);
+        if (uploadedUrl != null) {
+          setState(() {
+            if (index < _photos.length) {
+              _photos[index] = uploadedUrl;
+            } else {
+              _photos.add(uploadedUrl);
+            }
+          });
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Gagal mengunggah foto.')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _uploadingIndex = null);
+        final errorMessage = e.toString().replaceFirst('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal mengunggah foto.')),
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
