@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../models/user_model.dart';
+import '../services/profile_service.dart';
 import '../widgets/photo_grid.dart';
 import 'verification_screen.dart';
 
@@ -18,15 +19,15 @@ class ProfileScreen extends StatelessWidget {
         .doc(firebaseUser.uid)
         .snapshots()
         .map((snapshot) {
-      if (!snapshot.exists || snapshot.data() == null) {
-        return UserModel(
-          uid: firebaseUser.uid,
-          name: firebaseUser.displayName ?? 'Your name',
-          email: firebaseUser.email ?? '',
-        );
-      }
-      return UserModel.fromMap(firebaseUser.uid, snapshot.data()!);
-    });
+          if (!snapshot.exists || snapshot.data() == null) {
+            return UserModel(
+              uid: firebaseUser.uid,
+              name: firebaseUser.displayName ?? 'Your name',
+              email: firebaseUser.email ?? '',
+            );
+          }
+          return UserModel.fromMap(firebaseUser.uid, snapshot.data()!);
+        });
   }
 
   @override
@@ -64,6 +65,10 @@ class _ProfileContentState extends State<_ProfileContent> {
   final GlobalKey _myLifeKey = GlobalKey();
   final GlobalKey _moreAboutYouKey = GlobalKey();
   final GlobalKey _bioKey = GlobalKey();
+  final ProfileService _profileService = ProfileService();
+  bool _isUpdatingAvatar = false;
+  bool _isAvatarHovered = false;
+  bool _isAvatarPressed = false;
 
   bool _isMyLifeComplete(UserModel? profile) {
     if (profile == null) return false;
@@ -129,6 +134,105 @@ class _ProfileContentState extends State<_ProfileContent> {
     }
   }
 
+  void _showSelectMainPhotoBottomSheet() {
+    final profile = widget.profile;
+    final uid = profile?.uid;
+    final photos = profile?.photos ?? [];
+
+    if (uid == null || uid.isEmpty) return;
+
+    if (photos.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Belum ada foto. Silakan tambah foto di bagian Photos and videos terlebih dahulu.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Pilih foto profile utama',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Flexible(
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  itemCount: photos.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                  ),
+                  itemBuilder: (ctx, index) {
+                    final photo = photos[index];
+                    final isMain = photo == profile?.photoUrl;
+                    return GestureDetector(
+                      onTap: () async {
+                        Navigator.pop(ctx);
+                        if (isMain) return;
+                        setState(() => _isUpdatingAvatar = true);
+                        await _profileService.setMainProfilePhoto(
+                          userId: uid,
+                          photoUrl: photo,
+                        );
+                        if (mounted) {
+                          setState(() => _isUpdatingAvatar = false);
+                        }
+                      },
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(photo, fit: BoxFit.cover),
+                          ),
+                          if (isMain)
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.black45,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.blue,
+                                  width: 2.5,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.check_circle,
+                                color: Colors.white,
+                                size: 30,
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final profile = widget.profile;
@@ -146,49 +250,79 @@ class _ProfileContentState extends State<_ProfileContent> {
       children: [
         Row(
           children: [
-            GestureDetector(
-              onTap: _handleCompleteProfileTap,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  CircleAvatar(
-                    radius: 58,
-                    backgroundColor: const Color(0xfff3f3f3),
-                    backgroundImage: profile?.photoUrl.isNotEmpty == true
-                        ? NetworkImage(profile!.photoUrl)
-                        : null,
-                    child: profile?.photoUrl.isEmpty != false
-                        ? const Icon(
-                            Icons.person,
-                            size: 67,
-                            color: Colors.black45,
-                          )
-                        : null,
-                  ),
-                  Positioned(
-                    bottom: -8,
-                    right: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 11,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(
-                        '$percentage%',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                CircleAvatar(
+                  radius: 58,
+                  backgroundColor: const Color(0xfff3f3f3),
+                  backgroundImage: profile?.photoUrl.isNotEmpty == true
+                      ? NetworkImage(profile!.photoUrl)
+                      : null,
+                  child: profile?.photoUrl.isEmpty != false
+                      ? const Icon(
+                          Icons.person,
+                          size: 67,
+                          color: Colors.black45,
+                        )
+                      : null,
+                ),
+                Positioned(
+                  bottom: 2,
+                  right: -6,
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    onHover: (_) => setState(() => _isAvatarHovered = true),
+                    onExit: (_) => setState(() => _isAvatarHovered = false),
+                    child: GestureDetector(
+                      onTapDown: (_) => setState(() => _isAvatarPressed = true),
+                      onTapCancel: () =>
+                          setState(() => _isAvatarPressed = false),
+                      onTapUp: (_) => setState(() => _isAvatarPressed = false),
+                      onTap: _isUpdatingAvatar
+                          ? null
+                          : _showSelectMainPhotoBottomSheet,
+                      child: AnimatedScale(
+                        scale: _isAvatarPressed
+                            ? 0.92
+                            : (_isAvatarHovered ? 1.05 : 1.0),
+                        duration: const Duration(milliseconds: 100),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1E88E5),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.edit,
+                            size: 20,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+                if (_isUpdatingAvatar)
+                  Positioned.fill(
+                    child: Container(
+                      color: Colors.black54,
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation(Colors.white),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(width: 20),
             Expanded(
@@ -234,7 +368,10 @@ class _ProfileContentState extends State<_ProfileContent> {
         const _ProfileSectionTitle('Photos and videos'),
         const _ProfileDescription('Pick some that show the true you.'),
         const SizedBox(height: 14),
-        PhotoGrid(userId: profile?.uid ?? ''),
+        PhotoGrid(
+          key: ValueKey('photo-grid-${profile?.photoUrl ?? ''}'),
+          userId: profile?.uid ?? '',
+        ),
         const SizedBox(height: 28),
         Container(key: _verifyKey),
         _ProfileRow(
