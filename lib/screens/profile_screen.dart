@@ -165,7 +165,7 @@ class _ProfileContentState extends State<_ProfileContent> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Pilih foto profile utama',
+                'Pick your profile picture',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
