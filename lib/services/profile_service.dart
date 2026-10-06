@@ -79,10 +79,10 @@ class ProfileService {
       );
 
       if (isDuplicate) {
-        throw Exception("Gagal upload. Foto '$fileName' sudah ada");
+        throw Exception("Unable to upload: a file named '$fileName' already exists.");
       }
     } catch (e) {
-      if (e.toString().contains('sudah ada')) {
+      if (e.toString().contains('already exists')) {
         rethrow;
       }
     }
@@ -151,7 +151,7 @@ class ProfileService {
 
       return publicUrl;
     } catch (e) {
-      if (e.toString().contains('sudah ada')) {
+      if (e.toString().contains('already exists')) {
         rethrow;
       }
       return null;
