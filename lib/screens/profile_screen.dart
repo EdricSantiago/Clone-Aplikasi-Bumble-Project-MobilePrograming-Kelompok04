@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/profile_service.dart';
 import '../widgets/photo_grid.dart';
+import 'education_screen.dart';
+import 'occupation_screen.dart';
 import 'verification_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -167,7 +169,7 @@ class _ProfileContentState extends State<_ProfileContent> {
               const Text(
                 'Pick your profile picture',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -217,7 +219,7 @@ class _ProfileContentState extends State<_ProfileContent> {
                               child: const Icon(
                                 Icons.check_circle,
                                 color: Colors.white,
-                                size: 30,
+                                size: 28,
                               ),
                             ),
                         ],
@@ -246,7 +248,7 @@ class _ProfileContentState extends State<_ProfileContent> {
     final percentageLabel = '$percentage% complete';
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(28, 8, 28, 32),
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
       children: [
         Row(
           children: [
@@ -254,7 +256,7 @@ class _ProfileContentState extends State<_ProfileContent> {
               clipBehavior: Clip.none,
               children: [
                 CircleAvatar(
-                  radius: 58,
+                  radius: 50,
                   backgroundColor: const Color(0xfff3f3f3),
                   backgroundImage: profile?.photoUrl.isNotEmpty == true
                       ? NetworkImage(profile!.photoUrl)
@@ -262,14 +264,14 @@ class _ProfileContentState extends State<_ProfileContent> {
                   child: profile?.photoUrl.isEmpty != false
                       ? const Icon(
                           Icons.person,
-                          size: 67,
+                          size: 58,
                           color: Colors.black45,
                         )
                       : null,
                 ),
                 Positioned(
                   bottom: 2,
-                  right: -6,
+                  right: -4,
                   child: MouseRegion(
                     cursor: SystemMouseCursors.click,
                     onHover: (_) => setState(() => _isAvatarHovered = true),
@@ -288,7 +290,7 @@ class _ProfileContentState extends State<_ProfileContent> {
                             : (_isAvatarHovered ? 1.05 : 1.0),
                         duration: const Duration(milliseconds: 100),
                         child: Container(
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(7),
                           decoration: BoxDecoration(
                             color: const Color(0xFF1E88E5),
                             shape: BoxShape.circle,
@@ -303,7 +305,7 @@ class _ProfileContentState extends State<_ProfileContent> {
                           ),
                           child: const Icon(
                             Icons.edit,
-                            size: 20,
+                            size: 18,
                             color: Colors.white,
                           ),
                         ),
@@ -324,7 +326,7 @@ class _ProfileContentState extends State<_ProfileContent> {
                   ),
               ],
             ),
-            const SizedBox(width: 20),
+            const SizedBox(width: 18),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -332,22 +334,22 @@ class _ProfileContentState extends State<_ProfileContent> {
                   Text(
                     '$name$ageLabel',
                     style: const TextStyle(
-                      fontSize: 27,
+                      fontSize: 22,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 14),
                   OutlinedButton(
                     onPressed: _handleCompleteProfileTap,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.black,
                       side: const BorderSide(color: Colors.black, width: 1.2),
                       padding: const EdgeInsets.symmetric(horizontal: 14),
-                      minimumSize: const Size(0, 42),
+                      minimumSize: const Size(0, 38),
                     ),
                     child: const Text(
                       'Complete profile',
-                      style: TextStyle(fontSize: 16),
+                      style: TextStyle(fontSize: 14),
                     ),
                   ),
                 ],
@@ -355,24 +357,24 @@ class _ProfileContentState extends State<_ProfileContent> {
             ),
           ],
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 24),
         const _ProfileSectionTitle('Profile strength'),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         _ProfileRow(
           icon: Icons.bolt_outlined,
           title: percentageLabel,
           onTap: _handleCompleteProfileTap,
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 24),
         Container(key: _photosKey),
         const _ProfileSectionTitle('Photos and videos'),
         const _ProfileDescription('Pick some that show the true you.'),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         PhotoGrid(
           key: ValueKey('photo-grid-${profile?.photoUrl ?? ''}'),
           userId: profile?.uid ?? '',
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 24),
         Container(key: _verifyKey),
         _ProfileRow(
           icon: isVerified ? Icons.verified : Icons.verified_outlined,
@@ -390,18 +392,28 @@ class _ProfileContentState extends State<_ProfileContent> {
                   );
                 },
         ),
-        const SizedBox(height: 30),
+        const SizedBox(height: 26),
         Container(key: _myLifeKey),
         const _ProfileSectionTitle('My life'),
         const _ProfileDescription(
           'Share where you are in life with your friends.',
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         _ProfileRow(
           icon: Icons.work_outline,
           title: 'Work',
           value: profile?.work.isNotEmpty == true ? profile!.work : 'Add',
-          onTap: () => _showPlaceholder(context, 'Work'),
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => OccupationScreen(userId: uid),
+                ),
+              );
+            }
+          },
         ),
         _ProfileRow(
           icon: Icons.school_outlined,
@@ -409,7 +421,17 @@ class _ProfileContentState extends State<_ProfileContent> {
           value: profile?.education.isNotEmpty == true
               ? profile!.education
               : 'Add',
-          onTap: () => _showPlaceholder(context, 'Education'),
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EducationScreen(userId: uid),
+                ),
+              );
+            }
+          },
         ),
         _ProfileRow(
           icon: Icons.wc_outlined,
@@ -433,13 +455,13 @@ class _ProfileContentState extends State<_ProfileContent> {
               : 'Add',
           onTap: () => _showPlaceholder(context, 'Hometown'),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 16),
         Container(key: _moreAboutYouKey),
         const _ProfileSectionTitle('More about you'),
         const _ProfileDescription(
           'Cover the things most people are curious about.',
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         _ProfileRow(
           icon: Icons.search,
           title: 'Looking for',
@@ -494,23 +516,23 @@ class _ProfileContentState extends State<_ProfileContent> {
               : 'Add',
           onTap: () => _showPlaceholder(context, 'Interests'),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
         Container(key: _bioKey),
         const _ProfileSectionTitle('Bio'),
         const _ProfileDescription('Write a fun and punchy intro.'),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         Container(
-          constraints: const BoxConstraints(minHeight: 110),
-          padding: const EdgeInsets.all(18),
+          constraints: const BoxConstraints(minHeight: 100),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             border: Border.all(color: const Color(0xffdddddd), width: 1.5),
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
             bio.isNotEmpty ? bio : 'A little bit about you...',
             style: TextStyle(
               color: bio.isNotEmpty ? Colors.black : Colors.black54,
-              fontSize: 16,
+              fontSize: 14,
             ),
           ),
         ),
@@ -533,7 +555,7 @@ class _ProfileSectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
+      style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
     );
   }
 }
@@ -546,13 +568,13 @@ class _ProfileDescription extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 7),
+      padding: const EdgeInsets.only(top: 5),
       child: Text(
         text,
         style: const TextStyle(
           color: Colors.black54,
-          fontSize: 16,
-          height: 1.4,
+          fontSize: 14,
+          height: 1.3,
         ),
       ),
     );
@@ -579,30 +601,34 @@ class _ProfileRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 13),
+        padding: const EdgeInsets.symmetric(vertical: 11),
         child: Row(
           children: [
-            Icon(icon, size: 29, color: Colors.black),
-            const SizedBox(width: 22),
+            Icon(icon, size: 24, color: Colors.black),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 15, color: Colors.black),
+            ),
+            const SizedBox(width: 24),
             Expanded(
               child: Text(
-                title,
-                style: const TextStyle(fontSize: 17, color: Colors.black),
+                value ?? '',
+                textAlign: TextAlign.right,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: value == 'Add' ? Colors.black54 : Colors.black,
+                  fontSize: 15,
+                  fontWeight: isDisabled ? FontWeight.w600 : FontWeight.normal,
+                ),
               ),
             ),
-            Text(
-              value ?? '',
-              style: TextStyle(
-                color: value == 'Add' ? Colors.black54 : Colors.black,
-                fontSize: 17,
-                fontWeight: isDisabled ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             if (!isDisabled)
-              const Icon(Icons.arrow_forward_ios, size: 20)
+              const Icon(Icons.arrow_forward_ios, size: 16)
             else
-              const SizedBox(width: 20),
+              const SizedBox(width: 16),
           ],
         ),
       ),
