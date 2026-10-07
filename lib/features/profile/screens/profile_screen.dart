@@ -52,7 +52,7 @@ class ProfileScreen extends StatelessWidget {
         }
 
         if (snapshot.hasError) {
-          return const Center(child: Text('Profil tidak dapat dimuat.'));
+          return const Center(child: Text('Unable to load profile.'));
         }
 
         final profile = snapshot.data;

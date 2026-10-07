@@ -295,7 +295,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 showChevron: false,
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Anda sedang di mode Date')),
+                    const SnackBar(content: Text('You are in Dating mode')),
                   );
                 },
               ),
