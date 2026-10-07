@@ -167,6 +167,22 @@ class ProfileService {
     }, SetOptions(merge: true));
   }
 
+  Future<void> updateSnoozeMode({
+    required String userId,
+    required bool isSnoozed,
+    String? snoozeDurationText,
+    String? snoozeReason,
+  }) async {
+    final uid = userId.isNotEmpty ? userId : currentUserId;
+    if (uid == null || uid.isEmpty) return;
+
+    await _firestore.collection('users').doc(uid).set({
+      'isSnoozed': isSnoozed,
+      'snoozeDurationText': snoozeDurationText ?? '',
+      'snoozeReason': snoozeReason ?? '',
+    }, SetOptions(merge: true));
+  }
+
   Stream<List<Map<String, dynamic>>> streamUserEducations(String userId) {
     final uid = userId.isNotEmpty ? userId : currentUserId;
     if (uid == null || uid.isEmpty) return Stream.value([]);
