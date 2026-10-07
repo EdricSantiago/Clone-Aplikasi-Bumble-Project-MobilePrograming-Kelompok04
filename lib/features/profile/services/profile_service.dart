@@ -32,6 +32,33 @@ class ProfileService {
     }
   }
 
+  Future<void> updateGender({
+    required String userId,
+    required String gender,
+    bool showOnProfile = true,
+  }) async {
+    final uid = userId.isNotEmpty ? userId : currentUserId;
+    if (uid == null || uid.isEmpty) return;
+
+    final valueToSave = showOnProfile ? gender : '';
+
+    await _firestore.collection('users').doc(uid).set({
+      'gender': valueToSave,
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> updateLocation({
+    required String userId,
+    required String location,
+  }) async {
+    final uid = userId.isNotEmpty ? userId : currentUserId;
+    if (uid == null || uid.isEmpty) return;
+
+    await _firestore.collection('users').doc(uid).set({
+      'location': location.trim(),
+    }, SetOptions(merge: true));
+  }
+
   Stream<List<Map<String, dynamic>>> streamUserEducations(String userId) {
     final uid = userId.isNotEmpty ? userId : currentUserId;
     if (uid == null || uid.isEmpty) return Stream.value([]);
