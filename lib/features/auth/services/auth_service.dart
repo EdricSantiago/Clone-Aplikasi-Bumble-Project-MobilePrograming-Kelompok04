@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:bumble/core/models/user_model.dart';
+import 'package:bumble/features/chat/services/presence_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -33,7 +34,6 @@ class AuthService {
         email: email,
         birthDate: birthDate,
       );
-
       await _firestore
           .collection('users')
           .doc(result.user!.uid)
@@ -53,7 +53,6 @@ class AuthService {
   }) async {
     try {
       await _auth.signInWithEmailAndPassword(email: email, password: password);
-
       return null;
     } on FirebaseAuthException catch (e) {
       return _mapFirebaseError(e.code);
@@ -74,22 +73,16 @@ class AuthService {
     switch (code) {
       case 'email-already-in-use':
         return 'Email sudah terdaftar. Coba login.';
-
       case 'invalid-email':
         return 'Format email tidak valid.';
-
       case 'weak-password':
         return 'Password terlalu lemah (minimal 6 karakter).';
-
       case 'user-not-found':
         return 'Akun dengan email ini tidak ditemukan.';
-
       case 'wrong-password':
         return 'Password salah.';
-
       case 'invalid-credential':
         return 'Email atau password salah.';
-
       default:
         return 'Gagal: $code';
     }

@@ -21,6 +21,7 @@ class PresenceService with WidgetsBindingObserver {
 
   StreamSubscription<DatabaseEvent>? _connectionSubscription;
   Future<void> _pendingUpdate = Future<void>.value();
+  Timer? _retryTimer;
   String? _currentUid;
   int _generation = 0;
   bool _connected = false;
@@ -42,12 +43,15 @@ class PresenceService with WidgetsBindingObserver {
     }
 
     final generation = ++_generation;
+    _retryTimer?.cancel();
+    _retryTimer = null;
     _currentUid = user.uid;
     _connected = false;
     _pendingUpdate = Future<void>.value();
 
     final lifecycle = WidgetsBinding.instance.lifecycleState;
-    _appActive = lifecycle == null || lifecycle == AppLifecycleState.resumed;
+    _appActive = _isVisible(lifecycle);
+    debugPrint('PRESENCE: mulai status/${user.uid}, visible=$_appActive');
     if (!_observingLifecycle) {
       WidgetsBinding.instance.addObserver(this);
       _observingLifecycle = true;
@@ -60,17 +64,23 @@ class PresenceService with WidgetsBindingObserver {
           (event) {
             if (!_isCurrentSession(user.uid, generation)) return;
             _connected = event.snapshot.value == true;
-            if (_connected) _queueStatusUpdate(user.uid, generation);
+            debugPrint('PRESENCE: connected=$_connected, visible=$_appActive');
+            if (_connected) {
+              _queueStatusUpdate(user.uid, generation);
+            } else {
+              _retryTimer?.cancel();
+              _retryTimer = null;
+            }
           },
           onError: (Object error) {
-            debugPrint('Gagal membaca koneksi presence: $error');
+            _logFailure('membaca koneksi', error);
           },
         );
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final active = state == AppLifecycleState.resumed;
+    final active = _isVisible(state);
     if (_appActive == active) return;
     _appActive = active;
 
@@ -78,6 +88,12 @@ class PresenceService with WidgetsBindingObserver {
     if (uid != null && _connected) {
       _queueStatusUpdate(uid, _generation);
     }
+  }
+
+  bool _isVisible(AppLifecycleState? state) {
+    return state == null ||
+        state == AppLifecycleState.resumed ||
+        state == AppLifecycleState.inactive;
   }
 
   bool _isCurrentSession(String uid, int generation) {
@@ -92,24 +108,51 @@ class PresenceService with WidgetsBindingObserver {
   };
 
   void _queueStatusUpdate(String uid, int generation) {
-    // Serialize writes so a delayed online write cannot overtake an offline one.
+    _retryTimer?.cancel();
+    _retryTimer = null;
     _pendingUpdate = _pendingUpdate
         .then((_) async {
           if (!_isCurrentSession(uid, generation) || !_connected) return;
 
           final statusRef = _rtdb.ref('status/$uid');
-          // The server must acknowledge this fallback before we mark a user online.
           await statusRef
               .onDisconnect()
               .set(_status(false))
               .timeout(_requestTimeout);
 
           if (!_isCurrentSession(uid, generation) || !_connected) return;
-          await statusRef.set(_status(_appActive)).timeout(_requestTimeout);
+          final online = _appActive;
+          await statusRef.set(_status(online)).timeout(_requestTimeout);
+          debugPrint('PRESENCE: tersimpan status/$uid online=$online');
         })
         .catchError((Object error, StackTrace stackTrace) {
-          debugPrint('Gagal memperbarui presence: $error');
+          _logFailure('memperbarui status', error);
+          if (_isCurrentSession(uid, generation) &&
+              _connected &&
+              !_isPermissionDenied(error)) {
+            _retryTimer?.cancel();
+            _retryTimer = Timer(const Duration(seconds: 2), () {
+              if (_isCurrentSession(uid, generation) && _connected) {
+                _queueStatusUpdate(uid, generation);
+              }
+            });
+          }
         });
+  }
+
+  bool _isPermissionDenied(Object error) {
+    return error is FirebaseException &&
+        error.code.toLowerCase().replaceAll('_', '-') == 'permission-denied';
+  }
+
+  void _logFailure(String action, Object error) {
+    debugPrint('PRESENCE gagal $action: $error');
+    if (_isPermissionDenied(error)) {
+      debugPrint(
+        'PRESENCE: akses ditolak. Periksa Realtime Database > Rules '
+        'untuk path status/{uid}.',
+      );
+    }
   }
 
   Future<void> goOffline() async {
@@ -117,8 +160,9 @@ class PresenceService with WidgetsBindingObserver {
     final subscription = _connectionSubscription;
     final pendingUpdate = _pendingUpdate;
 
-    // Invalidate callbacks immediately, before waiting for any Firebase request.
     ++_generation;
+    _retryTimer?.cancel();
+    _retryTimer = null;
     _currentUid = null;
     _connected = false;
     _connectionSubscription = null;
@@ -140,17 +184,22 @@ class PresenceService with WidgetsBindingObserver {
             .timeout(_requestTimeout);
       }
     } catch (error) {
-      // A lost connection must not prevent logout. The server's onDisconnect
-      // handler remains registered as the backup for this case.
-      debugPrint('Gagal mengirim status offline: $error');
+      _logFailure('mengirim status offline', error);
     }
   }
 
   Stream<Map<String, dynamic>> watchUserStatus(String uid) {
-    return _rtdb.ref('status/$uid').onValue.map((event) {
-      final data = event.snapshot.value as Map?;
-      if (data == null) return {'online': false, 'lastSeen': null};
-      return Map<String, dynamic>.from(data);
-    });
+    return _rtdb
+        .ref('status/$uid')
+        .onValue
+        .map((event) {
+          final data = event.snapshot.value as Map?;
+          if (data == null) return {'online': false, 'lastSeen': null};
+          return Map<String, dynamic>.from(data);
+        })
+        .handleError((Object error, StackTrace stackTrace) {
+          _logFailure('membaca status/$uid', error);
+          Error.throwWithStackTrace(error, stackTrace);
+        });
   }
 }

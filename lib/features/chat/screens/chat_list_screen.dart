@@ -14,19 +14,21 @@ class ChatListScreen extends StatefulWidget {
 
 class _ChatListScreenState extends State<ChatListScreen> {
   final ChatService _chatService = ChatService();
+  late final _matches = _chatService.getMatches();
+  final Map<String, Stream<Map<String, dynamic>>> _presenceCache = {};
 
   final Map<String, Future<Map<String, dynamic>?>> _userDataCache = {};
 
   Future<Map<String, dynamic>?> _getCachedUserData(String uid) {
     if (uid.isEmpty) return Future.value(null);
-    return _userDataCache.putIfAbsent(
-      uid,
-      () => _chatService.getUserData(uid),
-    );
+    return _userDataCache.putIfAbsent(uid, () => _chatService.getUserData(uid));
   }
 
   Stream<Map<String, dynamic>> _presenceStream(String uid) {
-    return PresenceService().watchUserStatus(uid);
+    return _presenceCache.putIfAbsent(
+      uid,
+      () => PresenceService().watchUserStatus(uid),
+    );
   }
 
   @override
@@ -36,10 +38,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Chat')),
       body: StreamBuilder<List<MatchModel>>(
-        stream: _chatService.getMatches(),
+        stream: _matches,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return const Center(child: Text('Chat gagal dimuat. Coba lagi.'));
           }
 
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -80,7 +86,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                 ? const Stream.empty()
                                 : _presenceStream(otherUserId),
                             builder: (context, snapshot) {
-                              final isOnline = snapshot.data?['online'] == true;
+                              final isOnline =
+                                  !snapshot.hasError &&
+                                  snapshot.data?['online'] == true;
                               return Container(
                                 width: 12,
                                 height: 12,

@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'package:bumble/features/settings/screens/blocked_accounts_screen.dart';
+
 import 'package:bumble/features/auth/services/auth_service.dart';
 import 'package:bumble/features/profile/screens/location_screen.dart';
 import 'package:bumble/features/profile/services/profile_service.dart';
@@ -19,6 +21,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _logOut() async {
     await _authService.logout();
+    if (mounted) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
   }
 
   String _formatLocation(String rawLocation) {
@@ -79,7 +84,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 18,
+                  horizontal: 20,
+                ),
                 decoration: const BoxDecoration(
                   color: Color(0xFFFFD600),
                   borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -153,7 +161,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 18,
+                  horizontal: 24,
+                ),
                 decoration: const BoxDecoration(
                   color: Color(0xFFFFD600),
                   borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -168,10 +179,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ),
-              ...statusOptions.map((status) => _buildBottomSheetOption(status, () {
-                    Navigator.pop(ctx);
-                    _activateSnooze(uid, durationText, status);
-                  })),
+              ...statusOptions.map(
+                (status) => _buildBottomSheetOption(status, () {
+                  Navigator.pop(ctx);
+                  _activateSnooze(uid, durationText, status);
+                }),
+              ),
               const SizedBox(height: 12),
               TextButton(
                 onPressed: () {
@@ -214,7 +227,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Future<void> _activateSnooze(String uid, String durationText, String? reason) async {
+  Future<void> _activateSnooze(
+    String uid,
+    String durationText,
+    String? reason,
+  ) async {
     await _profileService.updateSnoozeMode(
       userId: uid,
       isSnoozed: true,
@@ -224,10 +241,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _deactivateSnooze(String uid) async {
-    await _profileService.updateSnoozeMode(
-      userId: uid,
-      isSnoozed: false,
-    );
+    await _profileService.updateSnoozeMode(userId: uid, isSnoozed: false);
   }
 
   @override
@@ -250,7 +264,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
       body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
+        stream: FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .snapshots(),
         builder: (context, snapshot) {
           final userData = snapshot.data?.data() ?? {};
           final isSnoozed = userData['isSnoozed'] == true;
@@ -261,8 +278,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           String snoozeDescription;
           if (!isSnoozed) {
-            snoozeDescription =
-                'Hide your profile temporarily. You won\'t lose any connections or chats.';
+            snoozeDescription = 'Hide your profile temporarily. You won\'t lose any connections or chats.';
           } else if (reason.isNotEmpty) {
             snoozeDescription =
                 'You are invisible for $durationText. You set your away status to "$reason".';
@@ -312,6 +328,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   }
                 },
               ),
+              const SizedBox(height: 26),
+              const _SectionTitle('Privacy'),
+              const SizedBox(height: 14),
+              _SettingsTile(
+                title: 'Akun diblokir',
+                leading: const Icon(Icons.block),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const BlockedAccountsScreen(),
+                  ),
+                ),
+              ),
               const SizedBox(height: 34),
               OutlinedButton(
                 onPressed: _logOut,
@@ -329,7 +358,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 44),
-              const Icon(Icons.hexagon_outlined, size: 32, color: Colors.black54),
+              const Icon(
+                Icons.hexagon_outlined,
+                size: 32,
+                color: Colors.black54,
+              ),
               const SizedBox(height: 4),
               const Text(
                 'Bumble',
@@ -344,7 +377,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const Text(
                 'Version 1.1.0\nCreated with love.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.black54, fontSize: 16, height: 1.5),
+                style: TextStyle(
+                  color: Colors.black54,
+                  fontSize: 16,
+                  height: 1.5,
+                ),
               ),
             ],
           );
