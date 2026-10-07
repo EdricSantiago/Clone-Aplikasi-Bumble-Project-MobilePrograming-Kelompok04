@@ -11,6 +11,13 @@ import 'package:bumble/features/profile/screens/verification_screen.dart';
 import 'package:bumble/features/profile/screens/gender_screen.dart';
 import 'package:bumble/features/profile/screens/location_screen.dart';
 import 'package:bumble/features/profile/screens/hometown_screen.dart';
+import 'package:bumble/features/profile/screens/height_screen.dart';
+import 'package:bumble/features/profile/screens/exercise_screen.dart';
+import 'package:bumble/features/profile/screens/education_level_screen.dart';
+import 'package:bumble/features/profile/screens/drinking_screen.dart';
+import 'package:bumble/features/profile/screens/smoking_screen.dart';
+import 'package:bumble/features/profile/screens/have_kids_screen.dart';
+import 'package:bumble/features/profile/screens/religion_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -86,13 +93,13 @@ class _ProfileContentState extends State<_ProfileContent> {
 
   bool _isMoreAboutYouComplete(UserModel? profile) {
     if (profile == null) return false;
-    return profile.lookingFor.isNotEmpty &&
-        profile.relationship.isNotEmpty &&
-        profile.haveKids.isNotEmpty &&
-        profile.smoking.isNotEmpty &&
-        profile.drinking.isNotEmpty &&
+    return profile.height.isNotEmpty &&
         profile.exercise.isNotEmpty &&
-        profile.interests.isNotEmpty;
+        profile.educationLevel.isNotEmpty &&
+        profile.drinking.isNotEmpty &&
+        profile.smoking.isNotEmpty &&
+        profile.haveKids.isNotEmpty &&
+        profile.religion.isNotEmpty;
   }
 
   int _calculatePercentage(UserModel? profile) {
@@ -156,8 +163,6 @@ class _ProfileContentState extends State<_ProfileContent> {
       );
       return;
     }
-
-
 
     showModalBottomSheet(
       context: context,
@@ -369,7 +374,6 @@ class _ProfileContentState extends State<_ProfileContent> {
       );
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -622,42 +626,22 @@ class _ProfileContentState extends State<_ProfileContent> {
         ),
         const SizedBox(height: 12),
         _ProfileRow(
-          icon: Icons.search,
-          title: 'Looking for',
-          value: profile?.lookingFor.isNotEmpty == true
-              ? profile!.lookingFor
+          icon: Icons.straighten,
+          title: 'Height',
+          value: profile?.height.isNotEmpty == true
+              ? profile!.height
               : 'Add',
-          onTap: () => _showPlaceholder(context, 'Looking for'),
-        ),
-        _ProfileRow(
-          icon: Icons.favorite_border,
-          title: 'Relationship',
-          value: profile?.relationship.isNotEmpty == true
-              ? profile!.relationship
-              : 'Single',
-          onTap: () => _showPlaceholder(context, 'Relationship'),
-        ),
-        _ProfileRow(
-          icon: Icons.child_friendly_outlined,
-          title: 'Have kids',
-          value: profile?.haveKids.isNotEmpty == true
-              ? profile!.haveKids
-              : 'Add',
-          onTap: () => _showPlaceholder(context, 'Have kids'),
-        ),
-        _ProfileRow(
-          icon: Icons.smoking_rooms_outlined,
-          title: 'Smoking',
-          value: profile?.smoking.isNotEmpty == true ? profile!.smoking : 'Add',
-          onTap: () => _showPlaceholder(context, 'Smoking'),
-        ),
-        _ProfileRow(
-          icon: Icons.wine_bar_outlined,
-          title: 'Drinking',
-          value: profile?.drinking.isNotEmpty == true
-              ? profile!.drinking
-              : 'Add',
-          onTap: () => _showPlaceholder(context, 'Drinking'),
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => HeightScreen(userId: uid),
+                ),
+              );
+            }
+          },
         ),
         _ProfileRow(
           icon: Icons.fitness_center,
@@ -665,43 +649,283 @@ class _ProfileContentState extends State<_ProfileContent> {
           value: profile?.exercise.isNotEmpty == true
               ? profile!.exercise
               : 'Add',
-          onTap: () => _showPlaceholder(context, 'Exercise'),
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ExerciseScreen(userId: uid),
+                ),
+              );
+            }
+          },
         ),
         _ProfileRow(
-          icon: Icons.auto_awesome_mosaic_outlined,
-          title: 'Interests',
-          value: profile?.interests.isNotEmpty == true
-              ? profile!.interests
+          icon: Icons.school_outlined,
+          title: 'Education level',
+          value: profile?.educationLevel.isNotEmpty == true
+              ? profile!.educationLevel
               : 'Add',
-          onTap: () => _showPlaceholder(context, 'Interests'),
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EducationLevelScreen(userId: uid),
+                ),
+              );
+            }
+          },
+        ),
+        _ProfileRow(
+          icon: Icons.wine_bar_outlined,
+          title: 'Drinking',
+          value: profile?.drinking.isNotEmpty == true
+              ? profile!.drinking
+              : 'Add',
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DrinkingScreen(userId: uid),
+                ),
+              );
+            }
+          },
+        ),
+        _ProfileRow(
+          icon: Icons.smoking_rooms_outlined,
+          title: 'Smoking',
+          value: profile?.smoking.isNotEmpty == true ? profile!.smoking : 'Add',
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SmokingScreen(userId: uid),
+                ),
+              );
+            }
+          },
+        ),
+        _ProfileRow(
+          icon: Icons.child_friendly_outlined,
+          title: 'Have kids',
+          value: profile?.haveKids.isNotEmpty == true
+              ? profile!.haveKids
+              : 'Add',
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => HaveKidsScreen(userId: uid),
+                ),
+              );
+            }
+          },
+        ),
+        _ProfileRow(
+          icon: Icons.sentiment_satisfied_alt_outlined,
+          title: 'Religion',
+          value: profile?.religion.isNotEmpty == true
+              ? profile!.religion
+              : 'Add',
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ReligionScreen(userId: uid),
+                ),
+              );
+            }
+          },
         ),
         const SizedBox(height: 20),
         Container(key: _bioKey),
-        const _ProfileSectionTitle('Bio'),
-        const _ProfileDescription('Write a fun and punchy intro.'),
-        const SizedBox(height: 12),
-        Container(
-          constraints: const BoxConstraints(minHeight: 100),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xffdddddd), width: 1.5),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            bio.isNotEmpty ? bio : 'A little bit about you...',
-            style: TextStyle(
-              color: bio.isNotEmpty ? Colors.black : Colors.black54,
-              fontSize: 14,
-            ),
-          ),
+        _BioSection(
+          userId: profile?.uid ?? '',
+          initialBio: bio,
         ),
       ],
     );
   }
+}
 
-  static void _showPlaceholder(BuildContext context, String title) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text('$title belum tersedia.')));
+class _BioSection extends StatefulWidget {
+  const _BioSection({
+    required this.userId,
+    required this.initialBio,
+  });
+
+  final String userId;
+  final String initialBio;
+
+  @override
+  State<_BioSection> createState() => _BioSectionState();
+}
+
+class _BioSectionState extends State<_BioSection> {
+  late TextEditingController _controller;
+  final ProfileService _profileService = ProfileService();
+  bool _isSaving = false;
+  bool _isDirty = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialBio);
+  }
+
+  @override
+  void didUpdateWidget(covariant _BioSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialBio != widget.initialBio && !_isDirty) {
+      _controller.text = widget.initialBio;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveBio() async {
+    if (_isSaving || widget.userId.isEmpty) return;
+    FocusScope.of(context).unfocus();
+    setState(() => _isSaving = true);
+    try {
+      await _profileService.updateBio(
+        userId: widget.userId,
+        bio: _controller.text,
+      );
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+          _isDirty = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Bio berhasil disimpan'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menyimpan bio: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const _ProfileSectionTitle('Bio'),
+            if (_isSaving)
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation(Colors.black),
+                ),
+              )
+            else if (_isDirty)
+              GestureDetector(
+                onTap: _saveBio,
+                child: Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: const BoxDecoration(
+                    color: Colors.black,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const _ProfileDescription('Write a fun and punchy intro.'),
+        const SizedBox(height: 12),
+        Container(
+          constraints: const BoxConstraints(minHeight: 110),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xffdddddd), width: 1.5),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            children: [
+              TextField(
+                controller: _controller,
+                maxLength: 1000,
+                maxLines: null,
+                keyboardType: TextInputType.multiline,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 14,
+                ),
+                onChanged: (val) {
+                  if (!_isDirty) {
+                    setState(() => _isDirty = true);
+                  }
+                },
+                decoration: const InputDecoration(
+                  hintText: 'A little bit about you...',
+                  hintStyle: TextStyle(
+                    color: Colors.black54,
+                    fontSize: 14,
+                  ),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                  counterText: '',
+                ),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _controller,
+                  builder: (context, value, child) {
+                    return Text(
+                      '${value.text.length}/1000',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.black38,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }
 
