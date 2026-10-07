@@ -8,6 +8,8 @@ import 'package:bumble/features/profile/widgets/photo_grid.dart';
 import 'package:bumble/features/profile/screens/education_screen.dart';
 import 'package:bumble/features/profile/screens/occupation_screen.dart';
 import 'package:bumble/features/profile/screens/verification_screen.dart';
+import 'package:bumble/features/profile/screens/gender_screen.dart';
+import 'package:bumble/features/profile/screens/location_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -154,6 +156,8 @@ class _ProfileContentState extends State<_ProfileContent> {
       return;
     }
 
+
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -233,6 +237,71 @@ class _ProfileContentState extends State<_ProfileContent> {
         );
       },
     );
+  }
+
+  void _handleLocationTap(String uid, String currentLocation) {
+    if (currentLocation.isEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LocationScreen(userId: uid),
+        ),
+      );
+    } else {
+      showDialog(
+        context: context,
+        builder: (ctx) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Text(
+              'What would you like to do?',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  await _profileService.updateLocation(userId: uid, location: '');
+                },
+                child: const Text(
+                  'REMOVE',
+                  style: TextStyle(
+                    color: Colors.black87,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => LocationScreen(userId: uid),
+                    ),
+                  );
+                },
+                child: const Text(
+                  'UPDATE',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    }
   }
 
   @override
@@ -437,7 +506,20 @@ class _ProfileContentState extends State<_ProfileContent> {
           icon: Icons.wc_outlined,
           title: 'Gender',
           value: profile?.gender.isNotEmpty == true ? profile!.gender : 'Add',
-          onTap: () => _showPlaceholder(context, 'Gender'),
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => GenderScreen(
+                    userId: uid,
+                    initialGender: profile?.gender ?? '',
+                  ),
+                ),
+              );
+            }
+          },
         ),
         _ProfileRow(
           icon: Icons.location_on_outlined,
@@ -445,7 +527,12 @@ class _ProfileContentState extends State<_ProfileContent> {
           value: profile?.location.isNotEmpty == true
               ? profile!.location
               : 'Add',
-          onTap: () => _showPlaceholder(context, 'Location'),
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              _handleLocationTap(uid, profile?.location ?? '');
+            }
+          },
         ),
         _ProfileRow(
           icon: Icons.home_outlined,
