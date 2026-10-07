@@ -879,7 +879,7 @@ class _BioSectionState extends State<_BioSection> {
             children: [
               TextField(
                 controller: _controller,
-                maxLength: 1000,
+                maxLength: 300,
                 maxLines: null,
                 keyboardType: TextInputType.multiline,
                 style: const TextStyle(
@@ -912,7 +912,7 @@ class _BioSectionState extends State<_BioSection> {
                   valueListenable: _controller,
                   builder: (context, value, child) {
                     return Text(
-                      '${value.text.length}/1000',
+                      '${value.text.length}/300',
                       style: const TextStyle(
                         fontSize: 11,
                         color: Colors.black38,
