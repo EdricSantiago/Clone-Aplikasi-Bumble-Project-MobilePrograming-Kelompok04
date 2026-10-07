@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:bumble/core/models/user_model.dart';
+import 'package:bumble/features/chat/services/presence_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -61,7 +62,11 @@ class AuthService {
   }
 
   Future<void> logout() async {
-    await _auth.signOut();
+    try {
+      await PresenceService().goOffline();
+    } finally {
+      await _auth.signOut();
+    }
   }
 
   String _mapFirebaseError(String code) {
