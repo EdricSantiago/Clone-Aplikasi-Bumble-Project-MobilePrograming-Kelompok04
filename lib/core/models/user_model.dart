@@ -17,6 +17,9 @@ class UserModel {
   final String location;
   final String hometown;
 
+  final String height;
+  final String educationLevel;
+  final String religion;
   final String lookingFor;
   final String relationship;
   final String haveKids;
@@ -40,6 +43,9 @@ class UserModel {
     this.education = '',
     this.location = '',
     this.hometown = '',
+    this.height = '',
+    this.educationLevel = '',
+    this.religion = '',
     this.lookingFor = '',
     this.relationship = '',
     this.haveKids = '',
@@ -75,6 +81,9 @@ class UserModel {
       'education': education,
       'location': location,
       'hometown': hometown,
+      'height': height,
+      'educationLevel': educationLevel,
+      'religion': religion,
       'lookingFor': lookingFor,
       'relationship': relationship,
       'haveKids': haveKids,
@@ -104,6 +113,9 @@ class UserModel {
       education: map['education'] ?? '',
       location: map['location'] ?? '',
       hometown: map['hometown'] ?? '',
+      height: map['height'] ?? '',
+      educationLevel: map['educationLevel'] ?? '',
+      religion: map['religion'] ?? '',
       lookingFor: map['lookingFor'] ?? '',
       relationship: map['relationship'] ?? '',
       haveKids: map['haveKids'] ?? '',
