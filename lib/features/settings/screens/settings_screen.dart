@@ -1,6 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'package:bumble/features/auth/services/auth_service.dart';
+import 'package:bumble/features/profile/screens/location_screen.dart';
+import 'package:bumble/features/profile/services/profile_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -10,20 +14,226 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _incognitoModeEnabled = false;
-  bool _autoSpotlightEnabled = false;
+  final ProfileService _profileService = ProfileService();
+  final AuthService _authService = AuthService();
 
   Future<void> _logOut() async {
-    await AuthService().logout();
+    await _authService.logout();
   }
 
-  void _showUnavailable(String title) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text('$title belum tersedia.')));
+  String _formatLocation(String rawLocation) {
+    if (rawLocation.trim().isEmpty) return 'Add';
+
+    final parts = rawLocation.split(',');
+    if (parts.length < 2) return rawLocation;
+
+    final city = parts[0].trim();
+    final country = parts.sublist(1).join(',').trim();
+
+    if (country.length == 2) {
+      return '$city, ${country.toUpperCase()}';
+    }
+
+    const countryMap = {
+      'indonesia': 'ID',
+      'japan': 'JP',
+      'jepang': 'JP',
+      'united states': 'US',
+      'united kingdom': 'UK',
+      'singapore': 'SG',
+      'singapura': 'SG',
+      'south korea': 'KR',
+      'korea': 'KR',
+      'malaysia': 'MY',
+      'thailand': 'TH',
+      'vietnam': 'VN',
+      'philippines': 'PH',
+      'filipina': 'PH',
+      'australia': 'AU',
+      'china': 'CN',
+      'germany': 'DE',
+      'jerman': 'DE',
+      'france': 'FR',
+      'prancis': 'FR',
+      'canada': 'CA',
+      'kanada': 'CA',
+    };
+
+    final code = countryMap[country.toLowerCase()] ?? country;
+    return '$city, $code';
+  }
+
+  void _showDurationBottomSheet(String uid) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFD600),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: const Text(
+                  'How long do you want to be invisible for?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+              _buildBottomSheetOption('24 hours', () {
+                Navigator.pop(ctx);
+                _showStatusBottomSheet(uid, 'another 1 day');
+              }),
+              _buildBottomSheetOption('72 hours', () {
+                Navigator.pop(ctx);
+                _showStatusBottomSheet(uid, 'another 3 days');
+              }),
+              _buildBottomSheetOption('A week', () {
+                Navigator.pop(ctx);
+                _showStatusBottomSheet(uid, 'another 7 days');
+              }),
+              _buildBottomSheetOption('Until I change it', () {
+                Navigator.pop(ctx);
+                _showStatusBottomSheet(uid, 'until you change it');
+              }),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showStatusBottomSheet(String uid, String durationText) {
+    final statusOptions = [
+      '✈️ I\'m travelling',
+      '📝 I\'m focused on work',
+      '🔌 I\'m on a digital detox',
+      '💖 I\'m prioritising myself',
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFD600),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: const Text(
+                  'Do you want to set a status for your existing matches while you\'re away?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+              ...statusOptions.map((status) => _buildBottomSheetOption(status, () {
+                    Navigator.pop(ctx);
+                    _activateSnooze(uid, durationText, status);
+                  })),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _activateSnooze(uid, durationText, null);
+                },
+                child: const Text(
+                  'No thanks',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBottomSheetOption(String text, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
+        child: Text(
+          text,
+          textAlign: TextAlign.left,
+          style: const TextStyle(
+            fontSize: 16,
+            color: Colors.black87,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _activateSnooze(String uid, String durationText, String? reason) async {
+    await _profileService.updateSnoozeMode(
+      userId: uid,
+      isSnoozed: true,
+      snoozeDurationText: durationText,
+      snoozeReason: reason,
+    );
+  }
+
+  Future<void> _deactivateSnooze(String uid) async {
+    await _profileService.updateSnoozeMode(
+      userId: uid,
+      isSnoozed: false,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -39,129 +249,106 @@ class _SettingsScreenState extends State<SettingsScreen> {
           style: TextStyle(fontSize: 21, fontWeight: FontWeight.w700),
         ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(28, 16, 28, 34),
-        children: [
-          _SettingsTile(
-            title: 'Type of connection',
-            trailing: 'Date',
-            showChevron: false,
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Anda sedang di mode Date')),
-              );
-            },
-          ),
-          const SizedBox(height: 14),
-          _SettingsTile(
-            title: 'Snooze mode',
-            onTap: () => _showUnavailable('Snooze mode'),
-          ),
-          const _Description(
-            'Hide your profile temporarily. You won\'t lose any connections or chats.',
-          ),
-          const SizedBox(height: 14),
-          _SettingsToggleTile(
-            title: 'Incognito Mode for Date',
-            value: _incognitoModeEnabled,
-            onChanged: (value) => setState(() => _incognitoModeEnabled = value),
-          ),
-          const _Description(
-            'Only people you\'ve liked already, or like later, will see your profile.',
-          ),
-          const SizedBox(height: 14),
-          _SettingsToggleTile(
-            title: 'Auto-Spotlight',
-            value: _autoSpotlightEnabled,
-            onChanged: (value) => setState(() => _autoSpotlightEnabled = value),
-          ),
-          const _Description(
-            'We\'ll use Spotlight automatically to boost your profile when most people will see it',
-          ),
-          const SizedBox(height: 26),
-          const _SectionTitle('Location'),
-          const SizedBox(height: 14),
-          _SettingsTile(
-            title: 'Current location',
-            trailing: 'Jakarta, ID',
-            onTap: () => _showUnavailable('Current location'),
-          ),
-          const SizedBox(height: 14),
-          _SettingsTile(
-            title: 'Travel',
-            leading: const _TravelIcon(),
-            onTap: () => _showUnavailable('Travel'),
-          ),
-          const _Description(
-            'Change your location to connect with people in other locations.',
-          ),
-          const SizedBox(height: 26),
-          _SettingsTile(
-            title: 'Video autoplay settings',
-            onTap: () => _showUnavailable('Video autoplay settings'),
-          ),
-          const SizedBox(height: 14),
-          _SettingsTile(
-            title: 'Notification settings',
-            onTap: () => _showUnavailable('Notification settings'),
-          ),
-          const SizedBox(height: 14),
-          _SettingsTile(
-            title: 'Legal information',
-            onTap: () => _showUnavailable('Legal information'),
-          ),
-          const SizedBox(height: 14),
-          _SettingsTile(
-            title: 'Get help',
-            onTap: () => _showUnavailable('Get help'),
-          ),
-          const SizedBox(height: 14),
-          _SettingsTile(
-            title: 'Security and Privacy',
-            onTap: () => _showUnavailable('Security and Privacy'),
-          ),
-          const SizedBox(height: 34),
-          OutlinedButton(
-            onPressed: _logOut,
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(56),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
+      body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
+        builder: (context, snapshot) {
+          final userData = snapshot.data?.data() ?? {};
+          final isSnoozed = userData['isSnoozed'] == true;
+          final durationText = userData['snoozeDurationText'] as String? ?? '';
+          final reason = userData['snoozeReason'] as String? ?? '';
+          final rawLocation = userData['location'] as String? ?? '';
+          final formattedLocation = _formatLocation(rawLocation);
+
+          String snoozeDescription;
+          if (!isSnoozed) {
+            snoozeDescription =
+                'Hide your profile temporarily. You won\'t lose any connections or chats.';
+          } else if (reason.isNotEmpty) {
+            snoozeDescription =
+                'You are invisible for $durationText. You set your away status to "$reason".';
+          } else {
+            snoozeDescription = 'You are invisible for $durationText.';
+          }
+
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(28, 16, 28, 34),
+            children: [
+              _SettingsTile(
+                title: 'Type of connection',
+                trailing: 'Date',
+                showChevron: false,
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Anda sedang di mode Date')),
+                  );
+                },
               ),
-              side: const BorderSide(color: Colors.black, width: 1.2),
-              foregroundColor: Colors.black,
-            ),
-            child: const Text(
-              'Log out',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-            ),
-          ),
-          TextButton(
-            onPressed: () => _showUnavailable('Delete account'),
-            child: const Text(
-              'Delete account',
-              style: TextStyle(color: Colors.black, fontSize: 18),
-            ),
-          ),
-          const SizedBox(height: 44),
-          const Icon(Icons.hexagon_outlined, size: 32, color: Colors.black54),
-          const SizedBox(height: 4),
-          const Text(
-            'Bumble',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.black54,
-              fontSize: 25,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Version 1.0.0\nCreated with love.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.black54, fontSize: 16, height: 1.5),
-          ),
-        ],
+              const SizedBox(height: 14),
+              _SettingsTile(
+                title: isSnoozed ? 'Deactivate snooze mode' : 'Snooze mode',
+                onTap: () {
+                  if (isSnoozed) {
+                    _deactivateSnooze(uid);
+                  } else {
+                    _showDurationBottomSheet(uid);
+                  }
+                },
+              ),
+              _Description(snoozeDescription),
+              const SizedBox(height: 26),
+              const _SectionTitle('Location'),
+              const SizedBox(height: 14),
+              _SettingsTile(
+                title: 'Current location',
+                trailing: formattedLocation,
+                onTap: () {
+                  if (uid.isNotEmpty) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => LocationScreen(userId: uid),
+                      ),
+                    );
+                  }
+                },
+              ),
+              const SizedBox(height: 34),
+              OutlinedButton(
+                onPressed: _logOut,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(56),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  side: const BorderSide(color: Colors.black, width: 1.2),
+                  foregroundColor: Colors.black,
+                ),
+                child: const Text(
+                  'Log out',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                ),
+              ),
+              const SizedBox(height: 44),
+              const Icon(Icons.hexagon_outlined, size: 32, color: Colors.black54),
+              const SizedBox(height: 4),
+              const Text(
+                'Bumble',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.black54,
+                  fontSize: 25,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Version 1.1.0\nCreated with love.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.black54, fontSize: 16, height: 1.5),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -222,46 +409,6 @@ class _SettingsTile extends StatelessWidget {
   }
 }
 
-class _SettingsToggleTile extends StatelessWidget {
-  const _SettingsToggleTile({
-    required this.title,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String title;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 74),
-      padding: const EdgeInsets.only(left: 32, right: 24),
-      decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xffdddddd), width: 1.6),
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-            ),
-          ),
-          Switch.adaptive(
-            value: value,
-            onChanged: onChanged,
-            activeTrackColor: Colors.black,
-            activeThumbColor: Colors.white,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _Description extends StatelessWidget {
   const _Description(this.text);
 
@@ -300,23 +447,6 @@ class _SectionTitle extends StatelessWidget {
           fontWeight: FontWeight.w700,
         ),
       ),
-    );
-  }
-}
-
-class _TravelIcon extends StatelessWidget {
-  const _TravelIcon();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: const BoxDecoration(
-        color: Colors.black,
-        shape: BoxShape.circle,
-      ),
-      child: const Icon(Icons.luggage, color: Colors.white, size: 21),
     );
   }
 }
