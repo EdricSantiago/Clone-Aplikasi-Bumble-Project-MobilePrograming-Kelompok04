@@ -478,20 +478,22 @@ class _ProfileContentState extends State<_ProfileContent> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  OutlinedButton(
-                    onPressed: _handleCompleteProfileTap,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.black,
-                      side: const BorderSide(color: Colors.black, width: 1.2),
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      minimumSize: const Size(0, 38),
+                  if (percentage < 100) ...[
+                    const SizedBox(height: 14),
+                    OutlinedButton(
+                      onPressed: _handleCompleteProfileTap,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.black,
+                        side: const BorderSide(color: Colors.black, width: 1.2),
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        minimumSize: const Size(0, 38),
+                      ),
+                      child: const Text(
+                        'Complete profile',
+                        style: TextStyle(fontSize: 14),
+                      ),
                     ),
-                    child: const Text(
-                      'Complete profile',
-                      style: TextStyle(fontSize: 14),
-                    ),
-                  ),
+                  ],
                 ],
               ),
             ),
