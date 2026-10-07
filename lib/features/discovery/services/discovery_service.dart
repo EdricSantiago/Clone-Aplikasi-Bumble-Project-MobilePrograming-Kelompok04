@@ -3,8 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:bumble/core/utils/combined_stream.dart';
 import 'package:bumble/features/discovery/models/discovery_filter.dart';
-import 'package:bumble/features/profile/models/user_model.dart';
-import 'package:bumble/features/profile/services/safety_service.dart';
+import 'package:bumble/core/models/user_model.dart';
+import 'package:bumble/core/services/safety_service.dart';
 
 class DiscoveryData {
   final List<UserModel> people;

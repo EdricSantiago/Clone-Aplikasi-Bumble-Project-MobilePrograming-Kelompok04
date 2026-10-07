@@ -8,7 +8,7 @@ import 'package:bumble/features/discovery/screens/liked_you_screen.dart';
 import 'package:bumble/features/discovery/services/discovery_service.dart';
 import 'package:bumble/features/discovery/widgets/swipe_card_stack.dart';
 import 'package:bumble/features/discovery/widgets/swipeable_card.dart';
-import 'package:bumble/features/profile/models/user_model.dart';
+import 'package:bumble/core/models/user_model.dart';
 import 'package:bumble/features/profile/screens/profile_screen.dart';
 import 'package:bumble/features/settings/screens/settings_screen.dart';
 
