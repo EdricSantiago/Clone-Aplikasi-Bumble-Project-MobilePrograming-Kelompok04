@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:bumble/core/theme/app_theme.dart';
 import 'package:bumble/features/chat/screens/chat_detail_screen.dart';
 import 'package:bumble/features/discovery/services/discovery_service.dart';
-import 'package:bumble/features/profile/models/user_model.dart';
+import 'package:bumble/core/models/user_model.dart';
 
 class LikedYouScreen extends StatefulWidget {
   final List<UserModel> profiles;

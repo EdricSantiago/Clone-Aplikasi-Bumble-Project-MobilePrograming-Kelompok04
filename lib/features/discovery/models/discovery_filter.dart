@@ -1,4 +1,4 @@
-import 'package:bumble/features/profile/models/user_model.dart';
+import 'package:bumble/core/models/user_model.dart';
 
 class DiscoveryFilter {
   static const genderOptions = ['Semua', 'Man', 'Woman', 'Non-binary'];

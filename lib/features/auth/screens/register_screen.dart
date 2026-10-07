@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'package:bumble/features/auth/services/auth_service.dart';
-import 'package:bumble/features/profile/models/user_model.dart';
+import 'package:bumble/core/models/user_model.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});

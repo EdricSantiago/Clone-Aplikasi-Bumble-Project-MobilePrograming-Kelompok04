@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:bumble/features/discovery/widgets/swipeable_card.dart';
-import 'package:bumble/features/profile/models/user_model.dart';
+import 'package:bumble/core/models/user_model.dart';
 
 class SwipeCardStack extends StatefulWidget {
   final List<UserModel> profiles;

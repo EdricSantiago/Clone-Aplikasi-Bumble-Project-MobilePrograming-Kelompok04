@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:bumble/features/profile/models/user_model.dart';
+import 'package:bumble/core/models/user_model.dart';
 
 enum SwipeDirection { left, right }
 
