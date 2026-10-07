@@ -71,6 +71,102 @@ class ProfileService {
     }, SetOptions(merge: true));
   }
 
+  Future<void> updateHeight({
+    required String userId,
+    required String height,
+  }) async {
+    final uid = userId.isNotEmpty ? userId : currentUserId;
+    if (uid == null || uid.isEmpty) return;
+
+    await _firestore.collection('users').doc(uid).set({
+      'height': height.trim(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> updateExercise({
+    required String userId,
+    required String exercise,
+  }) async {
+    final uid = userId.isNotEmpty ? userId : currentUserId;
+    if (uid == null || uid.isEmpty) return;
+
+    await _firestore.collection('users').doc(uid).set({
+      'exercise': exercise.trim(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> updateEducationLevel({
+    required String userId,
+    required String educationLevel,
+  }) async {
+    final uid = userId.isNotEmpty ? userId : currentUserId;
+    if (uid == null || uid.isEmpty) return;
+
+    await _firestore.collection('users').doc(uid).set({
+      'educationLevel': educationLevel.trim(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> updateDrinking({
+    required String userId,
+    required String drinking,
+  }) async {
+    final uid = userId.isNotEmpty ? userId : currentUserId;
+    if (uid == null || uid.isEmpty) return;
+
+    await _firestore.collection('users').doc(uid).set({
+      'drinking': drinking.trim(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> updateSmoking({
+    required String userId,
+    required String smoking,
+  }) async {
+    final uid = userId.isNotEmpty ? userId : currentUserId;
+    if (uid == null || uid.isEmpty) return;
+
+    await _firestore.collection('users').doc(uid).set({
+      'smoking': smoking.trim(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> updateHaveKids({
+    required String userId,
+    required String haveKids,
+  }) async {
+    final uid = userId.isNotEmpty ? userId : currentUserId;
+    if (uid == null || uid.isEmpty) return;
+
+    await _firestore.collection('users').doc(uid).set({
+      'haveKids': haveKids.trim(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> updateReligion({
+    required String userId,
+    required String religion,
+  }) async {
+    final uid = userId.isNotEmpty ? userId : currentUserId;
+    if (uid == null || uid.isEmpty) return;
+
+    await _firestore.collection('users').doc(uid).set({
+      'religion': religion.trim(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> updateBio({
+    required String userId,
+    required String bio,
+  }) async {
+    final uid = userId.isNotEmpty ? userId : currentUserId;
+    if (uid == null || uid.isEmpty) return;
+
+    await _firestore.collection('users').doc(uid).set({
+      'bio': bio.trim(),
+    }, SetOptions(merge: true));
+  }
+
   Stream<List<Map<String, dynamic>>> streamUserEducations(String userId) {
     final uid = userId.isNotEmpty ? userId : currentUserId;
     if (uid == null || uid.isEmpty) return Stream.value([]);
