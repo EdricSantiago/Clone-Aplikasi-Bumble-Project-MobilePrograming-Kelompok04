@@ -559,26 +559,9 @@ class ProfileService {
     if (uid == null || uid.isEmpty) return null;
 
     try {
-      final existingFiles = await _supabase.storage
-          .from(_bucket)
-          .list(path: 'profiles/$uid');
-
-      final isDuplicate = existingFiles.any(
-        (file) => file.name.toLowerCase() == fileName.toLowerCase(),
-      );
-
-      if (isDuplicate) {
-        throw Exception("Unable to upload: a file named '$fileName' already exists.");
-      }
-    } catch (e) {
-      if (e.toString().contains('already exists')) {
-        rethrow;
-      }
-    }
-
-    try {
       final processedBytes = _compressImage(imageBytes);
-      final path = 'profiles/$uid/$fileName';
+      final uniqueFileName = '${DateTime.now().millisecondsSinceEpoch}_$fileName';
+      final path = 'profiles/$uid/$uniqueFileName';
 
       await _supabase.storage
           .from(_bucket)
@@ -586,7 +569,7 @@ class ProfileService {
             path,
             processedBytes,
             fileOptions: const FileOptions(
-              upsert: false,
+              upsert: true,
               contentType: 'image/jpeg',
             ),
           );
@@ -639,10 +622,7 @@ class ProfileService {
       }
 
       return publicUrl;
-    } catch (e) {
-      if (e.toString().contains('already exists')) {
-        rethrow;
-      }
+    } catch (_) {
       return null;
     }
   }
