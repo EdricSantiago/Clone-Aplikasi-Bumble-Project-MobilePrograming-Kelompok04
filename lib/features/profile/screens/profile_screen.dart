@@ -10,6 +10,7 @@ import 'package:bumble/features/profile/screens/occupation_screen.dart';
 import 'package:bumble/features/profile/screens/verification_screen.dart';
 import 'package:bumble/features/profile/screens/gender_screen.dart';
 import 'package:bumble/features/profile/screens/location_screen.dart';
+import 'package:bumble/features/profile/screens/hometown_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -304,6 +305,72 @@ class _ProfileContentState extends State<_ProfileContent> {
     }
   }
 
+  void _handleHometownTap(String uid, String currentHometown) {
+    if (currentHometown.isEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => HometownScreen(userId: uid),
+        ),
+      );
+    } else {
+      showDialog(
+        context: context,
+        builder: (ctx) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Text(
+              'What would you like to do?',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  await _profileService.updateHometown(userId: uid, hometown: '');
+                },
+                child: const Text(
+                  'REMOVE',
+                  style: TextStyle(
+                    color: Colors.black87,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => HometownScreen(userId: uid),
+                    ),
+                  );
+                },
+                child: const Text(
+                  'UPDATE',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     final profile = widget.profile;
@@ -540,7 +607,12 @@ class _ProfileContentState extends State<_ProfileContent> {
           value: profile?.hometown.isNotEmpty == true
               ? profile!.hometown
               : 'Add',
-          onTap: () => _showPlaceholder(context, 'Hometown'),
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              _handleHometownTap(uid, profile?.hometown ?? '');
+            }
+          },
         ),
         const SizedBox(height: 16),
         Container(key: _moreAboutYouKey),
