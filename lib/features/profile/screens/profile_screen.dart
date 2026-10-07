@@ -1,0 +1,1020 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+
+import 'package:bumble/core/models/user_model.dart';
+import 'package:bumble/features/profile/services/profile_service.dart';
+import 'package:bumble/features/profile/widgets/photo_grid.dart';
+import 'package:bumble/features/profile/screens/education_screen.dart';
+import 'package:bumble/features/profile/screens/occupation_screen.dart';
+import 'package:bumble/features/profile/screens/verification_screen.dart';
+import 'package:bumble/features/profile/screens/gender_screen.dart';
+import 'package:bumble/features/profile/screens/location_screen.dart';
+import 'package:bumble/features/profile/screens/hometown_screen.dart';
+import 'package:bumble/features/profile/screens/height_screen.dart';
+import 'package:bumble/features/profile/screens/exercise_screen.dart';
+import 'package:bumble/features/profile/screens/education_level_screen.dart';
+import 'package:bumble/features/profile/screens/drinking_screen.dart';
+import 'package:bumble/features/profile/screens/smoking_screen.dart';
+import 'package:bumble/features/profile/screens/have_kids_screen.dart';
+import 'package:bumble/features/profile/screens/religion_screen.dart';
+
+class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({super.key});
+
+  Stream<UserModel?> _streamProfile() {
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    if (firebaseUser == null) return Stream.value(null);
+
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(firebaseUser.uid)
+        .snapshots()
+        .map((snapshot) {
+          if (!snapshot.exists || snapshot.data() == null) {
+            return UserModel(
+              uid: firebaseUser.uid,
+              name: firebaseUser.displayName ?? 'Your name',
+              email: firebaseUser.email ?? '',
+            );
+          }
+          return UserModel.fromMap(firebaseUser.uid, snapshot.data()!);
+        });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<UserModel?>(
+      stream: _streamProfile(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return const Center(child: Text('Profil tidak dapat dimuat.'));
+        }
+
+        final profile = snapshot.data;
+        return _ProfileContent(profile: profile);
+      },
+    );
+  }
+}
+
+class _ProfileContent extends StatefulWidget {
+  const _ProfileContent({required this.profile});
+
+  final UserModel? profile;
+
+  @override
+  State<_ProfileContent> createState() => _ProfileContentState();
+}
+
+class _ProfileContentState extends State<_ProfileContent> {
+  final GlobalKey _photosKey = GlobalKey();
+  final GlobalKey _verifyKey = GlobalKey();
+  final GlobalKey _myLifeKey = GlobalKey();
+  final GlobalKey _moreAboutYouKey = GlobalKey();
+  final GlobalKey _bioKey = GlobalKey();
+  final ProfileService _profileService = ProfileService();
+  bool _isUpdatingAvatar = false;
+  bool _isAvatarHovered = false;
+  bool _isAvatarPressed = false;
+
+  bool _isMyLifeComplete(UserModel? profile) {
+    if (profile == null) return false;
+    return profile.work.isNotEmpty &&
+        profile.education.isNotEmpty &&
+        profile.gender.isNotEmpty &&
+        profile.location.isNotEmpty &&
+        profile.hometown.isNotEmpty;
+  }
+
+  bool _isMoreAboutYouComplete(UserModel? profile) {
+    if (profile == null) return false;
+    return profile.height.isNotEmpty &&
+        profile.exercise.isNotEmpty &&
+        profile.educationLevel.isNotEmpty &&
+        profile.drinking.isNotEmpty &&
+        profile.smoking.isNotEmpty &&
+        profile.haveKids.isNotEmpty &&
+        profile.religion.isNotEmpty;
+  }
+
+  int _calculatePercentage(UserModel? profile) {
+    if (profile == null) return 0;
+    int total = 0;
+
+    if (profile.photos.isNotEmpty) total += 10;
+    if (profile.isVerified) total += 20;
+    if (_isMyLifeComplete(profile)) total += 25;
+    if (_isMoreAboutYouComplete(profile)) total += 25;
+    if (profile.bio.trim().isNotEmpty) total += 20;
+
+    return total;
+  }
+
+  void _handleCompleteProfileTap() {
+    final profile = widget.profile;
+
+    if (profile == null || profile.photos.isEmpty) {
+      _scrollToSection(_photosKey);
+    } else if (!profile.isVerified) {
+      _scrollToSection(_verifyKey);
+    } else if (!_isMyLifeComplete(profile)) {
+      _scrollToSection(_myLifeKey);
+    } else if (!_isMoreAboutYouComplete(profile)) {
+      _scrollToSection(_moreAboutYouKey);
+    } else if (profile.bio.trim().isEmpty) {
+      _scrollToSection(_bioKey);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profil Anda sudah 100% lengkap! 🎉')),
+      );
+    }
+  }
+
+  void _scrollToSection(GlobalKey key) {
+    final targetContext = key.currentContext;
+    if (targetContext != null) {
+      Scrollable.ensureVisible(
+        targetContext,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  void _showSelectMainPhotoBottomSheet() {
+    final profile = widget.profile;
+    final uid = profile?.uid;
+    final photos = profile?.photos ?? [];
+
+    if (uid == null || uid.isEmpty) return;
+
+    if (photos.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Belum ada foto. Silakan tambah foto di bagian Photos and videos terlebih dahulu.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Pick your profile picture',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Flexible(
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  itemCount: photos.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                  ),
+                  itemBuilder: (ctx, index) {
+                    final photo = photos[index];
+                    final isMain = photo == profile?.photoUrl;
+                    return GestureDetector(
+                      onTap: () async {
+                        Navigator.pop(ctx);
+                        if (isMain) return;
+                        setState(() => _isUpdatingAvatar = true);
+                        await _profileService.setMainProfilePhoto(
+                          userId: uid,
+                          photoUrl: photo,
+                        );
+                        if (mounted) {
+                          setState(() => _isUpdatingAvatar = false);
+                        }
+                      },
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(photo, fit: BoxFit.cover),
+                          ),
+                          if (isMain)
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.black45,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.blue,
+                                  width: 2.5,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.check_circle,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _handleLocationTap(String uid, String currentLocation) {
+    if (currentLocation.isEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LocationScreen(userId: uid),
+        ),
+      );
+    } else {
+      showDialog(
+        context: context,
+        builder: (ctx) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Text(
+              'What would you like to do?',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  await _profileService.updateLocation(userId: uid, location: '');
+                },
+                child: const Text(
+                  'REMOVE',
+                  style: TextStyle(
+                    color: Colors.black87,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => LocationScreen(userId: uid),
+                    ),
+                  );
+                },
+                child: const Text(
+                  'UPDATE',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
+  void _handleHometownTap(String uid, String currentHometown) {
+    if (currentHometown.isEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => HometownScreen(userId: uid),
+        ),
+      );
+    } else {
+      showDialog(
+        context: context,
+        builder: (ctx) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Text(
+              'What would you like to do?',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  await _profileService.updateHometown(userId: uid, hometown: '');
+                },
+                child: const Text(
+                  'REMOVE',
+                  style: TextStyle(
+                    color: Colors.black87,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => HometownScreen(userId: uid),
+                    ),
+                  );
+                },
+                child: const Text(
+                  'UPDATE',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = widget.profile;
+    final name = profile?.name.isNotEmpty == true ? profile!.name : 'Your name';
+    final age = profile?.age ?? 0;
+    final ageLabel = age > 0 ? ', $age' : '';
+    final bio = profile?.bio ?? '';
+    final isVerified = profile?.isVerified ?? false;
+
+    final percentage = _calculatePercentage(profile);
+    final percentageLabel = '$percentage% complete';
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+      children: [
+        Row(
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                CircleAvatar(
+                  radius: 50,
+                  backgroundColor: const Color(0xfff3f3f3),
+                  backgroundImage: profile?.photoUrl.isNotEmpty == true
+                      ? NetworkImage(profile!.photoUrl)
+                      : null,
+                  child: profile?.photoUrl.isEmpty != false
+                      ? const Icon(
+                          Icons.person,
+                          size: 58,
+                          color: Colors.black45,
+                        )
+                      : null,
+                ),
+                Positioned(
+                  bottom: 2,
+                  right: -4,
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    onHover: (_) => setState(() => _isAvatarHovered = true),
+                    onExit: (_) => setState(() => _isAvatarHovered = false),
+                    child: GestureDetector(
+                      onTapDown: (_) => setState(() => _isAvatarPressed = true),
+                      onTapCancel: () =>
+                          setState(() => _isAvatarPressed = false),
+                      onTapUp: (_) => setState(() => _isAvatarPressed = false),
+                      onTap: _isUpdatingAvatar
+                          ? null
+                          : _showSelectMainPhotoBottomSheet,
+                      child: AnimatedScale(
+                        scale: _isAvatarPressed
+                            ? 0.92
+                            : (_isAvatarHovered ? 1.05 : 1.0),
+                        duration: const Duration(milliseconds: 100),
+                        child: Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1E88E5),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.edit,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                if (_isUpdatingAvatar)
+                  Positioned.fill(
+                    child: Container(
+                      color: Colors.black54,
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation(Colors.white),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(width: 18),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$name$ageLabel',
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  OutlinedButton(
+                    onPressed: _handleCompleteProfileTap,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.black,
+                      side: const BorderSide(color: Colors.black, width: 1.2),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      minimumSize: const Size(0, 38),
+                    ),
+                    child: const Text(
+                      'Complete profile',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        const _ProfileSectionTitle('Profile strength'),
+        const SizedBox(height: 10),
+        _ProfileRow(
+          icon: Icons.bolt_outlined,
+          title: percentageLabel,
+          onTap: _handleCompleteProfileTap,
+        ),
+        const SizedBox(height: 24),
+        Container(key: _photosKey),
+        const _ProfileSectionTitle('Photos and videos'),
+        const _ProfileDescription('Pick some that show the true you.'),
+        const SizedBox(height: 12),
+        PhotoGrid(
+          key: ValueKey('photo-grid-${profile?.photoUrl ?? ''}'),
+          userId: profile?.uid ?? '',
+        ),
+        const SizedBox(height: 24),
+        Container(key: _verifyKey),
+        _ProfileRow(
+          icon: isVerified ? Icons.verified : Icons.verified_outlined,
+          title: 'Verify my profile',
+          value: isVerified ? 'Verified' : 'Not verified',
+          onTap: isVerified
+              ? null
+              : () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          VerificationScreen(userId: profile?.uid ?? ''),
+                    ),
+                  );
+                },
+        ),
+        const SizedBox(height: 26),
+        Container(key: _myLifeKey),
+        const _ProfileSectionTitle('My life'),
+        const _ProfileDescription(
+          'Share where you are in life with your friends.',
+        ),
+        const SizedBox(height: 12),
+        _ProfileRow(
+          icon: Icons.work_outline,
+          title: 'Work',
+          value: profile?.work.isNotEmpty == true ? profile!.work : 'Add',
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => OccupationScreen(userId: uid),
+                ),
+              );
+            }
+          },
+        ),
+        _ProfileRow(
+          icon: Icons.school_outlined,
+          title: 'Education',
+          value: profile?.education.isNotEmpty == true
+              ? profile!.education
+              : 'Add',
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EducationScreen(userId: uid),
+                ),
+              );
+            }
+          },
+        ),
+        _ProfileRow(
+          icon: Icons.wc_outlined,
+          title: 'Gender',
+          value: profile?.gender.isNotEmpty == true ? profile!.gender : 'Add',
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => GenderScreen(
+                    userId: uid,
+                    initialGender: profile?.gender ?? '',
+                  ),
+                ),
+              );
+            }
+          },
+        ),
+        _ProfileRow(
+          icon: Icons.location_on_outlined,
+          title: 'Location',
+          value: profile?.location.isNotEmpty == true
+              ? profile!.location
+              : 'Add',
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              _handleLocationTap(uid, profile?.location ?? '');
+            }
+          },
+        ),
+        _ProfileRow(
+          icon: Icons.home_outlined,
+          title: 'Hometown',
+          value: profile?.hometown.isNotEmpty == true
+              ? profile!.hometown
+              : 'Add',
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              _handleHometownTap(uid, profile?.hometown ?? '');
+            }
+          },
+        ),
+        const SizedBox(height: 16),
+        Container(key: _moreAboutYouKey),
+        const _ProfileSectionTitle('More about you'),
+        const _ProfileDescription(
+          'Cover the things most people are curious about.',
+        ),
+        const SizedBox(height: 12),
+        _ProfileRow(
+          icon: Icons.straighten,
+          title: 'Height',
+          value: profile?.height.isNotEmpty == true
+              ? profile!.height
+              : 'Add',
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => HeightScreen(userId: uid),
+                ),
+              );
+            }
+          },
+        ),
+        _ProfileRow(
+          icon: Icons.fitness_center,
+          title: 'Exercise',
+          value: profile?.exercise.isNotEmpty == true
+              ? profile!.exercise
+              : 'Add',
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ExerciseScreen(userId: uid),
+                ),
+              );
+            }
+          },
+        ),
+        _ProfileRow(
+          icon: Icons.school_outlined,
+          title: 'Education level',
+          value: profile?.educationLevel.isNotEmpty == true
+              ? profile!.educationLevel
+              : 'Add',
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EducationLevelScreen(userId: uid),
+                ),
+              );
+            }
+          },
+        ),
+        _ProfileRow(
+          icon: Icons.wine_bar_outlined,
+          title: 'Drinking',
+          value: profile?.drinking.isNotEmpty == true
+              ? profile!.drinking
+              : 'Add',
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DrinkingScreen(userId: uid),
+                ),
+              );
+            }
+          },
+        ),
+        _ProfileRow(
+          icon: Icons.smoking_rooms_outlined,
+          title: 'Smoking',
+          value: profile?.smoking.isNotEmpty == true ? profile!.smoking : 'Add',
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SmokingScreen(userId: uid),
+                ),
+              );
+            }
+          },
+        ),
+        _ProfileRow(
+          icon: Icons.child_friendly_outlined,
+          title: 'Have kids',
+          value: profile?.haveKids.isNotEmpty == true
+              ? profile!.haveKids
+              : 'Add',
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => HaveKidsScreen(userId: uid),
+                ),
+              );
+            }
+          },
+        ),
+        _ProfileRow(
+          icon: Icons.sentiment_satisfied_alt_outlined,
+          title: 'Religion',
+          value: profile?.religion.isNotEmpty == true
+              ? profile!.religion
+              : 'Add',
+          onTap: () {
+            final uid = profile?.uid ?? '';
+            if (uid.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ReligionScreen(userId: uid),
+                ),
+              );
+            }
+          },
+        ),
+        const SizedBox(height: 20),
+        Container(key: _bioKey),
+        _BioSection(
+          userId: profile?.uid ?? '',
+          initialBio: bio,
+        ),
+      ],
+    );
+  }
+}
+
+class _BioSection extends StatefulWidget {
+  const _BioSection({
+    required this.userId,
+    required this.initialBio,
+  });
+
+  final String userId;
+  final String initialBio;
+
+  @override
+  State<_BioSection> createState() => _BioSectionState();
+}
+
+class _BioSectionState extends State<_BioSection> {
+  late TextEditingController _controller;
+  final ProfileService _profileService = ProfileService();
+  bool _isSaving = false;
+  bool _isDirty = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialBio);
+  }
+
+  @override
+  void didUpdateWidget(covariant _BioSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialBio != widget.initialBio && !_isDirty) {
+      _controller.text = widget.initialBio;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveBio() async {
+    if (_isSaving || widget.userId.isEmpty) return;
+    FocusScope.of(context).unfocus();
+    setState(() => _isSaving = true);
+    try {
+      await _profileService.updateBio(
+        userId: widget.userId,
+        bio: _controller.text,
+      );
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+          _isDirty = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Bio berhasil disimpan'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menyimpan bio: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const _ProfileSectionTitle('Bio'),
+            if (_isSaving)
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation(Colors.black),
+                ),
+              )
+            else if (_isDirty)
+              GestureDetector(
+                onTap: _saveBio,
+                child: Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: const BoxDecoration(
+                    color: Colors.black,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const _ProfileDescription('Write a fun and punchy intro.'),
+        const SizedBox(height: 12),
+        Container(
+          constraints: const BoxConstraints(minHeight: 110),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xffdddddd), width: 1.5),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            children: [
+              TextField(
+                controller: _controller,
+                maxLength: 300,
+                maxLines: null,
+                keyboardType: TextInputType.multiline,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 14,
+                ),
+                onChanged: (val) {
+                  if (!_isDirty) {
+                    setState(() => _isDirty = true);
+                  }
+                },
+                decoration: const InputDecoration(
+                  hintText: 'A little bit about you...',
+                  hintStyle: TextStyle(
+                    color: Colors.black54,
+                    fontSize: 14,
+                  ),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                  counterText: '',
+                ),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _controller,
+                  builder: (context, value, child) {
+                    return Text(
+                      '${value.text.length}/300',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.black38,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProfileSectionTitle extends StatelessWidget {
+  const _ProfileSectionTitle(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+    );
+  }
+}
+
+class _ProfileDescription extends StatelessWidget {
+  const _ProfileDescription(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 5),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.black54,
+          fontSize: 14,
+          height: 1.3,
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileRow extends StatelessWidget {
+  const _ProfileRow({
+    required this.icon,
+    required this.title,
+    this.onTap,
+    this.value,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? value;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDisabled = onTap == null;
+
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        child: Row(
+          children: [
+            Icon(icon, size: 24, color: Colors.black),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 15, color: Colors.black),
+            ),
+            const SizedBox(width: 24),
+            Expanded(
+              child: Text(
+                value ?? '',
+                textAlign: TextAlign.right,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: value == 'Add' ? Colors.black54 : Colors.black,
+                  fontSize: 15,
+                  fontWeight: isDisabled ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            if (!isDisabled)
+              const Icon(Icons.arrow_forward_ios, size: 16)
+            else
+              const SizedBox(width: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
