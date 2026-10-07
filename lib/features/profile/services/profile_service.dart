@@ -59,6 +59,18 @@ class ProfileService {
     }, SetOptions(merge: true));
   }
 
+  Future<void> updateHometown({
+    required String userId,
+    required String hometown,
+  }) async {
+    final uid = userId.isNotEmpty ? userId : currentUserId;
+    if (uid == null || uid.isEmpty) return;
+
+    await _firestore.collection('users').doc(uid).set({
+      'hometown': hometown.trim(),
+    }, SetOptions(merge: true));
+  }
+
   Stream<List<Map<String, dynamic>>> streamUserEducations(String userId) {
     final uid = userId.isNotEmpty ? userId : currentUserId;
     if (uid == null || uid.isEmpty) return Stream.value([]);
